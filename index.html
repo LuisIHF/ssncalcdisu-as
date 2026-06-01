@@ -7,6 +7,8 @@
 <style>
 
 
+
+
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 *{margin:0;padding:0;box-sizing:border-box}
@@ -596,9 +598,13 @@ body.light .cut-stat{background:rgba(196,96,126,0.05)}
   font-size:0.68rem;font-family:'Orbitron',monospace;letter-spacing:0.5px;
 }
 
+
+
 </style>
 </head>
 <body>
+
+
 
 
 <div id="loginScreen">
@@ -647,6 +653,8 @@ body.light .cut-stat{background:rgba(196,96,126,0.05)}
 </div>
 
 <script>
+
+
 
 
 // ============================================================
@@ -698,7 +706,7 @@ const ESMALTES=[
   {id:'leche',name:'Efecto Leche / Jelly',desc:'+$50',price:50,base:0},
   {id:'termo',name:'Efecto Termocróm.',desc:'+$150',price:150,base:0},
 ];
-// ESMALTE_BASE managed via window.ESMALTE_BASE_VAL from precios module
+// window.ESMALTE_BASE_VAL||350 managed via window.ESMALTE_BASE_VAL from precios module
 
 const DECORACIONES=[
   {id:'sencilla',name:'Decoración Sencilla',desc:'Puntos, líneas, stickers, glaze',price:100},
@@ -882,167 +890,190 @@ function calcTime(){
 // BUILD CALCULATOR UI
 // ============================================================
 function buildCalculadora(){
-  const {total,breakdown}=calcTotal();
-  const tiempo=calcTime();
-  const warn200=total===200?'<div class="warning-msg">⚠ Precio mínimo aplicado: $200 MXN</div>':'';
+  var _c = calc;
+  var ct = calcTotal();
+  var total = ct.total;
+  var breakdown = ct.breakdown;
+  var tiempo = calcTime();
+  var warn200 = total===200 ? '<div class="warning-msg">Precio minimo aplicado: $200 MXN</div>' : '';
+  var EBV = window.ESMALTE_BASE_VAL || 350;
+  var decoIsNone = _c.decoracion === 'ninguna';
 
-  const decoIsNone=calc.decoracion==='ninguna';
+  // --- ESTRUCTURA ---
+  var estRows = '';
+  ESTRUCTURAS.forEach(function(e){
+    estRows += '<div class="opt-card' + (_c.estructura===e.id?' selected':'') + '" onclick="setCalc(\'estructura\',\''+e.id+'\')">' +
+      '<div class="opt-name">'+e.name+'</div>' +
+      '<div class="opt-price">'+fmt(e.price)+'</div></div>';
+  });
 
-  return `
-<div id="calcGrid" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">
-<div>
+  // --- LONGITUD ---
+  var lonRows = '';
+  LONGITUDES.forEach(function(l){
+    lonRows += '<div class="opt-card' + (_c.longitud===l.id?' selected':'') + '" onclick="setCalc(\'longitud\',\''+l.id+'\')">' +
+      '<div class="opt-name">'+l.name+'</div>' +
+      '<div class="opt-price">'+(l.price===0?'Base':'+'+fmt(l.price))+'</div></div>';
+  });
 
-<!-- ESTRUCTURA -->
-<div class="card">
-  <div class="card-title"><span class="icon">🔮</span>TIPO DE ESTRUCTURA</div>
-  <div class="options-grid">
-    ${ESTRUCTURAS.map(e=>`
-    <div class="opt-card ${calc.estructura===e.id?'selected':''}" onclick="setCalc('estructura','${e.id}')">
-      <div class="opt-name">${e.name}</div>
-      <div class="opt-price">${fmt(e.price)}</div>
-    </div>`).join('')}
-  </div>
-</div>
+  // --- FORMA ---
+  var frmRows = '';
+  FORMAS.forEach(function(f){
+    frmRows += '<div class="opt-card' + (_c.forma===f.id?' selected':'') + '" onclick="setCalc(\'forma\',\''+f.id+'\')">' +
+      '<div class="opt-name">'+f.name+'</div>' +
+      '<div class="opt-price">'+(f.price===0?'Incluida':'+'+fmt(f.price))+'</div></div>';
+  });
 
-<!-- LONGITUD -->
-<div class="card">
-  <div class="card-title"><span class="icon">📏</span>LONGITUD</div>
-  <div class="options-grid">
-    ${LONGITUDES.map(l=>`
-    <div class="opt-card ${calc.longitud===l.id?'selected':''}" onclick="setCalc('longitud','${l.id}')">
-      <div class="opt-name">${l.name}</div>
-      <div class="opt-price">${l.price===0?'Base':'+'+fmt(l.price)}</div>
-    </div>`).join('')}
-  </div>
-</div>
+  // --- ESMALTE ---
+  var esmRows = '';
+  ESMALTES.forEach(function(e){
+    esmRows += '<div class="opt-card' + (_c.esmalte===e.id?' selected':'') + '" onclick="setCalc(\'esmalte\',\''+e.id+'\')">' +
+      '<div class="opt-name">'+e.name+'</div>' +
+      '<div class="opt-price">'+(e.price===0?'Sin extra':'+'+fmt(e.price))+'</div></div>';
+  });
 
-<!-- FORMA -->
-<div class="card">
-  <div class="card-title"><span class="icon">💎</span>FORMA</div>
-  <div class="options-grid">
-    ${FORMAS.map(f=>`
-    <div class="opt-card ${calc.forma===f.id?'selected':''}" onclick="setCalc('forma','${f.id}')">
-      <div class="opt-name">${f.name}</div>
-      <div class="opt-price">${f.price===0?'Incluida':'+'+fmt(f.price)}</div>
-    </div>`).join('')}
-  </div>
-</div>
+  // --- DECORACIONES ---
+  var decoRows = '';
+  DECORACIONES.forEach(function(d){
+    decoRows += '<div class="opt-card' + (_c.decoracion===d.id?' selected':'') + '" onclick="setCalc(\'decoracion\',\''+d.id+'\')">' +
+      '<div class="opt-name">'+d.name+'</div>' +
+      (d.desc?'<div class="opt-desc">'+d.desc+'</div>':'') +
+      '<div class="opt-price">'+(d.price===0?'Sin extra':'+'+fmt(d.price))+'</div></div>';
+  });
 
-<!-- ESMALTE / ACABADO -->
-<div class="card">
-  <div class="card-title"><span class="icon">✨</span>ESMALTE Y ACABADO</div>
-  <div class="section-label">Base Gel Polish: ${fmt(ESMALTE_BASE)} incluido · selecciona efecto adicional</div>
-  <div class="options-grid">
-    ${ESMALTES.map(e=>`
-    <div class="opt-card ${calc.esmalte===e.id?'selected':''}" onclick="setCalc('esmalte','${e.id}')">
-      <div class="opt-name">${e.name}</div>
-      <div class="opt-price">${e.price===0?'Sin extra':'+'+fmt(e.price)}</div>
-    </div>`).join('')}
-  </div>
-</div>
+  // --- DECO EXTRA (si no es ninguna) ---
+  var decoExtra = '';
+  if(!decoIsNone){
+    var manoSel = _c.decoPorMano;
+    var piezaRows = '';
+    if(!manoSel){
+      DECO_PIEZAS.forEach(function(p){
+        piezaRows += '<div class="opt-card' + (_c.decoPieza===p.id?' selected':'') + '" onclick="setCalc(\'decoPieza\',\''+p.id+'\')">' +
+          '<div class="opt-name">'+p.name+'</div>' +
+          '<div class="opt-price">'+fmt(p.price)+'/una</div></div>';
+      });
+    }
+    decoExtra = '<div style="margin-top:16px">' +
+      '<div class="section-label">Como cobrar la decoracion?</div>' +
+      '<div style="display:flex;gap:10px;margin-bottom:14px">' +
+      '<div class="opt-card' + (manoSel?' selected':'') + '" onclick="setDecoPorMano(true)" style="flex:1;text-align:center">' +
+        '<div class="opt-name">Por mano completa</div><div class="opt-price">Precio fijo</div></div>' +
+      '<div class="opt-card' + (!manoSel?' selected':'') + '" onclick="setDecoPorMano(false)" style="flex:1;text-align:center">' +
+        '<div class="opt-name">Por una individual</div><div class="opt-price">Precio x una</div></div>' +
+      '</div>' +
+      (!manoSel ?
+        '<div class="section-label">Tipo y cantidad por una</div>' +
+        '<div class="options-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:12px">' +
+        piezaRows + '</div>' +
+        '<div style="display:flex;align-items:center;gap:12px">' +
+        '<label style="font-size:0.8rem;color:var(--text-dim);font-family:Orbitron,monospace">UNAS:</label>' +
+        '<input class="qty-input" type="number" min="1" max="10" value="'+_c.decoPiezaCant+'" onchange="setCalc(\'decoPiezaCant\',parseInt(this.value)||1)">' +
+        '<span style="font-size:0.75rem;color:var(--text-dim)">max 10</span></div>'
+      : '') +
+      '</div>';
+  }
 
-<!-- DECORACIÓN -->
-<div class="card">
-  <div class="card-title"><span class="icon">🎨</span>DECORACIÓN</div>
-  <div class="section-label">Elige tipo de decoración</div>
-  <div class="options-grid" style="grid-template-columns:repeat(auto-fill,minmax(185px,1fr))">
-    ${DECORACIONES.map(d=>`
-    <div class="opt-card ${calc.decoracion===d.id?'selected':''}" onclick="setCalc('decoracion','${d.id}')">
-      <div class="opt-name">${d.name}</div>
-      ${d.desc?`<div class="opt-desc">${d.desc}</div>`:''}
-      <div class="opt-price">${d.price===0?'Sin extra':'+'+fmt(d.price)}</div>
-    </div>`).join('')}
-  </div>
+  // --- ADICIONALES ---
+  var adRows = '';
+  ADICIONALES.forEach(function(a){
+    adRows += '<div class="extra-item' + (_c.adicionales[a.id]?' checked':'') + '" onclick="toggleAdicional(\''+a.id+'\')">' +
+      '<div class="extra-checkbox">' + (_c.adicionales[a.id]?'&#10003;':'') + '</div>' +
+      '<div><div class="extra-label">'+a.name+'</div>' +
+      (a.desc?'<div class="extra-sublabel">'+a.desc+'</div>':'')+
+      '</div><div class="extra-price">'+fmt(a.price)+'</div></div>';
+  });
 
-  ${!decoIsNone?`
-  <div style="margin-top:16px">
-    <div class="section-label">¿Cómo cobrar la decoración?</div>
-    <div style="display:flex;gap:10px;margin-bottom:14px">
-      <div class="opt-card ${calc.decoPorMano?'selected':''}" onclick="setDecoPorMano(true)" style="flex:1;text-align:center">
-        <div class="opt-name">Por mano completa</div>
-        <div class="opt-price">Precio fijo</div>
-      </div>
-      <div class="opt-card ${!calc.decoPorMano?'selected':''}" onclick="setDecoPorMano(false)" style="flex:1;text-align:center">
-        <div class="opt-name">Por uña individual</div>
-        <div class="opt-price">Precio × uña</div>
-      </div>
-    </div>
-    ${!calc.decoPorMano?`
-    <div class="section-label">Tipo y cantidad por uña</div>
-    <div class="options-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:12px">
-      ${DECO_PIEZAS.map(p=>`
-      <div class="opt-card ${calc.decoPieza===p.id?'selected':''}" onclick="setCalc('decoPieza','${p.id}')">
-        <div class="opt-name">${p.name}</div>
-        <div class="opt-price">${fmt(p.price)}/uña</div>
-      </div>`).join('')}
-    </div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <label style="font-size:0.8rem;color:var(--text-dim);font-family:'Orbitron',monospace">UÑAS:</label>
-      <input class="qty-input" type="number" min="1" max="10" value="${calc.decoPiezaCant}" onchange="setCalc('decoPiezaCant',parseInt(this.value)||1)">
-      <span style="font-size:0.75rem;color:var(--text-dim)">máx 10</span>
-    </div>`:''}
-  </div>`:''}
-</div>
+  // --- MATERIALES ---
+  var matRows = '';
+  MATERIALES.forEach(function(m){
+    var q = _c.materiales[m.id] || 0;
+    matRows += '<div class="extra-item" style="cursor:default">' +
+      '<div style="font-size:1.1rem;color:var(--saber-glow)">&#10022;</div>' +
+      '<div style="flex:1"><div class="extra-label">'+m.name+'</div>' +
+      '<div class="extra-sublabel">'+fmt(m.price)+' por pieza</div></div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+      '<input class="qty-input" type="number" min="0" max="100" value="'+q+'" onchange="setMaterial(\''+m.id+'\',this.value)">' +
+      '<span style="font-size:0.75rem;color:var(--text-dim)">pzs</span></div></div>';
+  });
 
-<!-- ADICIONALES -->
-<div class="card">
-  <div class="card-title"><span class="icon">⭐</span>ADICIONALES Y MANTENIMIENTO</div>
-  <div class="extras-list">
-    ${ADICIONALES.map(a=>`
-    <div class="extra-item ${calc.adicionales[a.id]?'checked':''}" onclick="toggleAdicional('${a.id}')">
-      <div class="extra-checkbox">${calc.adicionales[a.id]?'✓':''}</div>
-      <div>
-        <div class="extra-label">${a.name}</div>
-        ${a.desc?`<div class="extra-sublabel">${a.desc}</div>`:''}
-      </div>
-      <div class="extra-price">${fmt(a.price)}</div>
-    </div>`).join('')}
-  </div>
-</div>
+  // --- BREAKDOWN ---
+  var bkRows = '';
+  breakdown.forEach(function(b){ bkRows += '<li><span>'+b.label+'</span><span>'+fmt(b.amount)+'</span></li>'; });
+  bkRows += '<li><span>TOTAL</span><span>'+fmt(total)+'</span></li>';
 
-<!-- MATERIALES -->
-<div class="card">
-  <div class="card-title"><span class="icon">💍</span>CARGO DE MATERIAL EXTRA</div>
-  <div class="section-label">Cargo de aplicación por pieza (material aparte)</div>
-  <div class="extras-list">
-    ${MATERIALES.map(m=>`
-    <div class="extra-item" style="cursor:default">
-      <div style="font-size:1.1rem">✦</div>
-      <div style="flex:1">
-        <div class="extra-label">${m.name}</div>
-        <div class="extra-sublabel">${fmt(m.price)} por pieza</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <input class="qty-input" type="number" min="0" max="100" value="${calc.materiales[m.id]||0}" onchange="setMaterial('${m.id}',this.value)">
-        <span style="font-size:0.75rem;color:var(--text-dim)">pzs</span>
-      </div>
-    </div>`).join('')}
-  </div>
-</div>
+  var saleBtn = (currentUser && currentUser.role !== 'supervisor') ?
+    '<button class="btn-sale" onclick="registerSale()">&#128176; VENTA</button>' : '';
 
-</div>
-<!-- TOTAL PANEL -->
-<div>
-  <div class="total-box">
-    <div class="total-label">ESTIMADO TOTAL</div>
-    <div class="total-amount">${fmt(total)}</div>
-    <div style="margin-top:4px;font-size:0.72rem;color:var(--text-dim);font-family:'Orbitron',monospace;letter-spacing:1px">MXN · STAR SHINE NAILS</div>
-    <div style="margin:16px 0 8px;height:1px;background:linear-gradient(90deg,transparent,rgba(196,96,126,0.4),transparent)"></div>
-    <ul class="breakdown">
-      ${breakdown.map(b=>`<li><span>${b.label}</span><span>${fmt(b.amount)}</span></li>`).join('')}
-      <li><span>TOTAL</span><span>${fmt(total)}</span></li>
-    </ul>
-    <div class="time-badge">⏱ ${tiempo} aprox.</div>
-    ${warn200}
-    <div class="total-actions">
-      <button class="btn-reset" onclick="resetCalc()">↺ RESET</button>
-      <button class="btn-pdf" onclick="downloadPDF()">📄 PDF</button>
-      ${currentUser&&currentUser.role!=='supervisor'?'<button class="btn-sale" onclick="registerSale()">💰 VENTA</button>':''}
-    </div>
-  </div>
-</div>
-</div>`;
+  return '<div id="calcGrid" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">' +
+  '<div>' +
+
+  // ESTRUCTURA
+  '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#128302;</span>TIPO DE ESTRUCTURA</div>' +
+    '<div class="options-grid">' + estRows + '</div>' +
+  '</div>' +
+
+  // LONGITUD
+  '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#128207;</span>LONGITUD</div>' +
+    '<div class="options-grid">' + lonRows + '</div>' +
+  '</div>' +
+
+  // FORMA
+  '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#128142;</span>FORMA</div>' +
+    '<div class="options-grid">' + frmRows + '</div>' +
+  '</div>' +
+
+  // ESMALTE
+  '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#10024;</span>ESMALTE Y ACABADO</div>' +
+    '<div class="section-label">Base Gel Polish: ' + fmt(EBV) + ' incluido &mdash; selecciona efecto adicional</div>' +
+    '<div class="options-grid">' + esmRows + '</div>' +
+  '</div>' +
+
+  // DECORACION
+  '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#127912;</span>DECORACION</div>' +
+    '<div class="section-label">Elige tipo de decoracion</div>' +
+    '<div class="options-grid" style="grid-template-columns:repeat(auto-fill,minmax(185px,1fr))">' + decoRows + '</div>' +
+    decoExtra +
+  '</div>' +
+
+  // ADICIONALES
+  '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#11088;</span>ADICIONALES Y MANTENIMIENTO</div>' +
+    '<div class="extras-list">' + adRows + '</div>' +
+  '</div>' +
+
+  // MATERIALES
+  '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#128141;</span>CARGO DE MATERIAL EXTRA</div>' +
+    '<div class="section-label">Cargo de aplicacion por pieza (material aparte)</div>' +
+    '<div class="extras-list">' + matRows + '</div>' +
+  '</div>' +
+
+  '</div>' + // end left col
+
+  // RIGHT COL — TOTAL
+  '<div>' +
+    '<div class="total-box">' +
+      '<div class="total-label">ESTIMADO TOTAL</div>' +
+      '<div class="total-amount">' + fmt(total) + '</div>' +
+      '<div style="margin-top:4px;font-size:0.72rem;color:var(--text-dim);font-family:Orbitron,monospace;letter-spacing:1px">MXN &mdash; STAR SHINE NAILS</div>' +
+      '<div style="margin:16px 0 8px;height:1px;background:linear-gradient(90deg,transparent,rgba(196,96,126,0.4),transparent)"></div>' +
+      '<ul class="breakdown">' + bkRows + '</ul>' +
+      '<div class="time-badge">&#9201; ' + tiempo + ' aprox.</div>' +
+      warn200 +
+      '<div class="total-actions">' +
+        '<button class="btn-reset" onclick="resetCalc()">&#8635; RESET</button>' +
+        '<button class="btn-pdf" onclick="downloadPDF()">&#128196; PDF</button>' +
+        saleBtn +
+      '</div>' +
+    '</div>' +
+  '</div>' +
+  '</div>'; // end grid
 }
+
 
 // ============================================================
 // CALC SETTERS
@@ -1068,41 +1099,40 @@ function resetCalc(){
 // PDF
 // ============================================================
 function downloadPDF(){
-  const {total,breakdown}=calcTotal();
-  const date=new Date().toLocaleString('es-MX');
-  const tiempo=calcTime();
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Cotización Star Shine Nails</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Exo+2:wght@300;400;500&display=swap" rel="stylesheet">
-  <style>
-  body{font-family:'Exo 2',sans-serif;margin:0;padding:40px;background:#05010a;color:#e8d8f0;max-width:520px}
-  h1{font-family:'Orbitron',monospace;font-size:1.3rem;color:#ff6b9d;margin-bottom:2px}
-  .sub{font-size:0.78rem;color:#8b7099;letter-spacing:2px;text-transform:uppercase;margin-bottom:24px}
-  table{width:100%;border-collapse:collapse;margin-bottom:16px}
-  td{padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.1);font-size:0.87rem;color:#e8d8f0}
-  td:last-child{text-align:right;font-family:'Orbitron',monospace;font-weight:600}
-  .total-row td{font-size:1rem;font-weight:700;color:#ff6b9d;border-top:1px solid rgba(196,96,126,0.4);border-bottom:none;padding-top:12px}
-  .footer{font-size:0.73rem;color:#8b7099;margin-top:20px;padding-top:12px;border-top:1px solid rgba(196,96,126,0.15)}
-  button{margin-top:20px;padding:10px 24px;background:linear-gradient(135deg,#c4607e,#7b3f6e);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Orbitron',monospace;font-size:0.8rem}
-  </style></head><body>
-  <h1>★ STAR SHINE NAILS</h1>
-  <div class="sub">Cotización · ${date}</div>
-  <table>${breakdown.map(b=>`<tr><td>${b.label}</td><td>${fmt(b.amount)}</td></tr>`).join('')}<tr class="total-row"><td>TOTAL</td><td>${fmt(total)}</td></tr></table>
-  <div class="footer">⏱ Tiempo estimado: ${tiempo}<br>✦ Cotización válida el día de hoy · Star Shine Nails</div>
-  <button onclick="window.print()">IMPRIMIR / GUARDAR PDF</button>
-  </body></html>`);
+  var ct=calcTotal(); var total=ct.total; var breakdown=ct.breakdown;
+  var date=new Date().toLocaleString('es-MX');
+  var tiempo=calcTime();
+  var bkRows='';
+  breakdown.forEach(function(b){ bkRows+='<tr><td>'+b.label+'</td><td>'+fmt(b.amount)+'</td></tr>'; });
+  bkRows+='<tr class="total-row"><td>TOTAL</td><td>'+fmt(total)+'</td></tr>';
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<title>Cotizacion Star Shine Nails</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Exo+2:wght@300;400;500&display=swap" rel="stylesheet">'
+    +'<style>body{font-family:Exo 2,sans-serif;margin:0;padding:40px;background:#05010a;color:#e8d8f0;max-width:520px}'
+    +'h1{font-family:Orbitron,monospace;font-size:1.3rem;color:#ff6b9d;margin-bottom:2px}'
+    +'.sub{font-size:0.78rem;color:#8b7099;letter-spacing:2px;text-transform:uppercase;margin-bottom:24px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:16px}'
+    +'td{padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.1);font-size:0.87rem;color:#e8d8f0}'
+    +'td:last-child{text-align:right;font-family:Orbitron,monospace;font-weight:600}'
+    +'.total-row td{font-size:1rem;font-weight:700;color:#ff6b9d;border-top:1px solid rgba(196,96,126,0.4);border-bottom:none;padding-top:12px}'
+    +'.footer{font-size:0.73rem;color:#8b7099;margin-top:20px;padding-top:12px;border-top:1px solid rgba(196,96,126,0.15)}'
+    +'button{margin-top:20px;padding:10px 24px;background:linear-gradient(135deg,#c4607e,#7b3f6e);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:Orbitron,monospace;font-size:0.8rem}'
+    +'</style></head><body>'
+    +'<h1>&#9733; STAR SHINE NAILS</h1>'
+    +'<div class="sub">Cotizacion &middot; '+date+'</div>'
+    +'<table>'+bkRows+'</table>'
+    +'<div class="footer">&#9201; Tiempo estimado: '+tiempo+'<br>&#10022; Cotizacion valida el dia de hoy &middot; Star Shine Nails</div>'
+    +'<button onclick="window.print()">IMPRIMIR / GUARDAR PDF</button>'
+    +'</body></html>');
   w.document.close();
-  // Save history
-  const h=loadHistory();
-  h.unshift({id:Date.now(),total,breakdown,date:new Date().toISOString(),user:currentUser.name,tiempo});
+  var h=loadHistory();
+  h.unshift({id:Date.now(),total:total,breakdown:breakdown,date:new Date().toISOString(),user:currentUser.name,tiempo:tiempo});
   if(h.length>5)h.pop();
   saveHistory(h);
 }
 
-// ============================================================
-// REGISTER SALE
-// ============================================================
+
 function registerSale(){
   const {total}=calcTotal();
   openModal(`<h2 class="modal-title">⚡ REGISTRAR VENTA</h2>
@@ -1138,36 +1168,39 @@ function confirmSale(total){
 // VENTAS
 // ============================================================
 function buildVentas(){
-  const sales=loadSales();
-  const today=new Date().toDateString();
-  const totalDay=sales.filter(s=>new Date(s.date).toDateString()===today).reduce((a,s)=>a+s.total,0);
-  const totalAll=sales.reduce((a,s)=>a+s.total,0);
-  const methodLabels={efectivo:'💵 Efectivo',transferencia:'📱 Transferencia',tarjeta:'💳 Tarjeta'};
-  return `
-<div class="stats-grid">
-  <div class="stat-card"><div class="stat-value">${fmt(totalDay)}</div><div class="stat-label">Ventas Hoy</div></div>
-  <div class="stat-card"><div class="stat-value">${fmt(totalAll)}</div><div class="stat-label">Total Acumulado</div></div>
-  <div class="stat-card"><div class="stat-value">${sales.length}</div><div class="stat-label">Servicios</div></div>
-  <div class="stat-card"><div class="stat-value">${sales.length?fmt(totalAll/sales.length):'$0'}</div><div class="stat-label">Ticket Promedio</div></div>
-</div>
-<div class="card">
-  <div class="card-title"><span class="icon">⚡</span>REGISTRO DE VENTAS</div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Fecha</th><th>Cliente</th><th>Método</th><th>Total</th><th>Nail Artist</th></tr></thead>
-      <tbody>${sales.length===0?'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-dim)">Sin ventas registradas</td></tr>':
-      [...sales].reverse().map(s=>`<tr>
-        <td>${fmtDate(s.date)}</td>
-        <td>${s.client}</td>
-        <td><span class="badge badge-green">${methodLabels[s.method]||s.method}</span></td>
-        <td style="font-family:'Orbitron',monospace;color:var(--saber-glow);font-weight:700">${fmt(s.total)}</td>
-        <td>${s.user}</td>
-      </tr>`).join('')}</tbody>
-    </table>
-  </div>
-  ${currentUser.role==='admin'?`<div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearSales()">🗑 Limpiar ventas</button></div>`:''}
-</div>`;
+  var sales=loadSales();
+  var today=new Date().toDateString();
+  var totalDay=sales.filter(function(s){return new Date(s.date).toDateString()===today;}).reduce(function(a,s){return a+s.total;},0);
+  var totalAll=sales.reduce(function(a,s){return a+s.total;},0);
+  var ml={efectivo:'&#128181; Efectivo',transferencia:'&#128241; Transferencia',tarjeta:'&#128179; Tarjeta'};
+  var rows='';
+  if(sales.length===0){
+    rows='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-dim);font-family:Orbitron,monospace;font-size:0.8rem">SIN VENTAS REGISTRADAS</td></tr>';
+  } else {
+    var rev=[].concat(sales).reverse();
+    rev.forEach(function(s){
+      rows+='<tr><td>'+fmtDate(s.date)+'</td><td>'+s.client+'</td>'
+        +'<td><span class="badge badge-green">'+(ml[s.method]||s.method)+'</span></td>'
+        +'<td style="font-family:Orbitron,monospace;color:var(--saber-glow);font-weight:700">'+fmt(s.total)+'</td>'
+        +'<td>'+s.user+'</td></tr>';
+    });
+  }
+  var clearBtn = currentUser.role==='admin' ? '<div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearSales()">&#128465; Limpiar ventas</button></div>' : '';
+  return '<div class="stats-grid">'
+    +'<div class="stat-card"><div class="stat-value">'+fmt(totalDay)+'</div><div class="stat-label">Ventas Hoy</div></div>'
+    +'<div class="stat-card"><div class="stat-value">'+fmt(totalAll)+'</div><div class="stat-label">Total Acumulado</div></div>'
+    +'<div class="stat-card"><div class="stat-value">'+sales.length+'</div><div class="stat-label">Servicios</div></div>'
+    +'<div class="stat-card"><div class="stat-value">'+(sales.length?fmt(totalAll/sales.length):'$0')+'</div><div class="stat-label">Ticket Promedio</div></div>'
+    +'</div>'
+    +'<div class="card">'
+    +'<div class="card-title"><span class="icon">&#9889;</span>REGISTRO DE VENTAS</div>'
+    +'<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Metodo</th><th>Total</th><th>Nail Artist</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'
+    + clearBtn
+    +'</div>';
 }
+
+
 function clearSales(){if(confirm('¿Limpiar todas las ventas?')){saveSales([]);showTab('ventas');}}
 
 // ============================================================
@@ -1187,31 +1220,39 @@ function buildCorte(){
 </div>`;
 }
 function generateCut(){
-  const from=new Date(document.getElementById('cutFrom').value);
-  const to=new Date(document.getElementById('cutTo').value);to.setHours(23,59,59);
-  const sales=loadSales().filter(s=>{const d=new Date(s.date);return d>=from&&d<=to;});
-  const total=sales.reduce((a,s)=>a+s.total,0);
-  const byMethod={},byUser={};
-  sales.forEach(s=>{byMethod[s.method]=(byMethod[s.method]||0)+s.total;byUser[s.user]=(byUser[s.user]||0)+s.total;});
-  const ml={efectivo:'💵 Efectivo',transferencia:'📱 Transferencia',tarjeta:'💳 Tarjeta'};
-  document.getElementById('cutResult').innerHTML=`
-  <div class="cut-summary">
-    <div class="cut-stat"><div class="cut-stat-value">${fmt(total)}</div><div class="cut-stat-label">Total Período</div></div>
-    <div class="cut-stat"><div class="cut-stat-value">${sales.length}</div><div class="cut-stat-label">Servicios</div></div>
-    <div class="cut-stat"><div class="cut-stat-value">${sales.length?fmt(total/sales.length):'$0'}</div><div class="cut-stat-label">Ticket Prom.</div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <div>
-      <div class="section-label">Por Método</div>
-      ${Object.entries(byMethod).map(([m,v])=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem"><span>${ml[m]||m}</span><span style="font-family:'Orbitron',monospace;color:var(--saber-glow)">${fmt(v)}</span></div>`).join('')||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>'}
-    </div>
-    <div>
-      <div class="section-label">Por Nail Artist</div>
-      ${Object.entries(byUser).map(([u,v])=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem"><span>💅 ${u}</span><span style="font-family:'Orbitron',monospace;color:var(--saber-glow)">${fmt(v)}</span></div>`).join('')||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>'}
-    </div>
-  </div>
-  <div style="margin-top:16px"><button class="btn-pdf" onclick="printCut()">🖨 IMPRIMIR CORTE</button></div>`;
+  var from=new Date(document.getElementById('cutFrom').value);
+  var to=new Date(document.getElementById('cutTo').value);to.setHours(23,59,59);
+  var sales=loadSales().filter(function(s){var d=new Date(s.date);return d>=from&&d<=to;});
+  var total=sales.reduce(function(a,s){return a+s.total;},0);
+  var byMethod={},byUser={};
+  sales.forEach(function(s){
+    byMethod[s.method]=(byMethod[s.method]||0)+s.total;
+    byUser[s.user]=(byUser[s.user]||0)+s.total;
+  });
+  var ml={efectivo:'&#128181; Efectivo',transferencia:'&#128241; Transferencia',tarjeta:'&#128179; Tarjeta'};
+  var mRows='',uRows='';
+  Object.keys(byMethod).forEach(function(m){
+    mRows+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem">'
+      +'<span>'+(ml[m]||m)+'</span><span style="font-family:Orbitron,monospace;color:var(--saber-glow)">'+fmt(byMethod[m])+'</span></div>';
+  });
+  Object.keys(byUser).forEach(function(u){
+    uRows+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem">'
+      +'<span>&#128133; '+u+'</span><span style="font-family:Orbitron,monospace;color:var(--saber-glow)">'+fmt(byUser[u])+'</span></div>';
+  });
+  document.getElementById('cutResult').innerHTML=
+    '<div class="cut-summary">'
+    +'<div class="cut-stat"><div class="cut-stat-value">'+fmt(total)+'</div><div class="cut-stat-label">Total Periodo</div></div>'
+    +'<div class="cut-stat"><div class="cut-stat-value">'+sales.length+'</div><div class="cut-stat-label">Servicios</div></div>'
+    +'<div class="cut-stat"><div class="cut-stat-value">'+(sales.length?fmt(total/sales.length):'$0')+'</div><div class="cut-stat-label">Ticket Prom.</div></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
+    +'<div><div class="section-label">Por Metodo</div>'+(mRows||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>')+'</div>'
+    +'<div><div class="section-label">Por Nail Artist</div>'+(uRows||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>')+'</div>'
+    +'</div>'
+    +'<div style="margin-top:16px"><button class="btn-pdf" onclick="printCut()">&#128424; IMPRIMIR CORTE</button></div>';
 }
+
+
 function printCut(){
   const from=document.getElementById('cutFrom').value;
   const to=document.getElementById('cutTo').value;
@@ -1229,44 +1270,59 @@ function printCut(){
 // HISTORIAL
 // ============================================================
 function buildHistorial(){
-  const h=loadHistory();
-  return `<div class="card">
-  <div class="card-title"><span class="icon">📋</span>ÚLTIMAS 5 COTIZACIONES</div>
-  ${h.length===0?'<p style="color:var(--text-dim);text-align:center;padding:32px;font-family:Orbitron,monospace;font-size:0.8rem">SIN COTIZACIONES GUARDADAS</p>':
-  `<div class="history-list">${h.map(q=>`<div class="history-item">
-    <div><div class="history-date">⏱ ${fmtDate(q.date)} · ${q.user}</div></div>
-    <div class="history-total">${fmt(q.total)}</div>
-  </div>`).join('')}</div>`}
-  <div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearHistory()">🗑 Limpiar</button></div>
-</div>`;
+  var h=loadHistory();
+  var rows='';
+  if(h.length===0){
+    rows='<p style="color:var(--text-dim);text-align:center;padding:32px;font-family:Orbitron,monospace;font-size:0.8rem">SIN COTIZACIONES GUARDADAS</p>';
+  } else {
+    var listItems='';
+    h.forEach(function(q){
+      listItems+='<div class="history-item">'
+        +'<div><div class="history-date">&#9201; '+fmtDate(q.date)+' &middot; '+q.user+'</div></div>'
+        +'<div class="history-total">'+fmt(q.total)+'</div>'
+        +'</div>';
+    });
+    rows='<div class="history-list">'+listItems+'</div>';
+  }
+  return '<div class="card">'
+    +'<div class="card-title"><span class="icon">&#128203;</span>ULTIMAS 5 COTIZACIONES</div>'
+    + rows
+    +'<div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearHistory()">&#128465; Limpiar</button></div>'
+    +'</div>';
 }
+
+
 function clearHistory(){if(confirm('¿Limpiar historial?')){saveHistory([]);showTab('historial');}}
 
 // ============================================================
 // USUARIOS
 // ============================================================
 function buildUsuarios(){
-  const users=loadUsers();
-  const rb={admin:'👑 ADMIN',manicurista:'💅 NAIL ARTIST',supervisor:'📊 SUPERVISOR'};
-  return `<div class="card">
-  <div class="card-title" style="justify-content:space-between">
-    <span><span class="icon">👥</span>GESTIÓN DE USUARIOS</span>
-    <button class="btn-save" style="padding:8px 16px;font-size:0.72rem" onclick="addUser()">+ NUEVO</button>
-  </div>
-  <div class="users-grid">
-    ${users.map(u=>`<div class="user-card">
-      <div class="user-avatar">${u.name.charAt(0)}</div>
-      <div class="user-name">${u.name}</div>
-      <div class="user-username">@${u.username}</div>
-      <div><span class="user-role-badge role-${u.role}">${rb[u.role]||u.role}</span></div>
-      <div class="user-actions">
-        <button class="btn-edit" onclick="editUser(${u.id})">✏ Editar</button>
-        ${u.id!==1?`<button class="btn-delete" onclick="deleteUser(${u.id})">✕ Eliminar</button>`:''}
-      </div>
-    </div>`).join('')}
-  </div>
-</div>`;
+  var users=loadUsers();
+  var rb={admin:'&#128081; ADMIN',manicurista:'&#128133; NAIL ARTIST',supervisor:'&#128202; SUPERVISOR'};
+  var cards='';
+  users.forEach(function(u){
+    var delBtn = u.id!==1 ? '<button class="btn-delete" onclick="deleteUser('+u.id+')">&#10005; Eliminar</button>' : '';
+    cards+='<div class="user-card">'
+      +'<div class="user-avatar">'+u.name.charAt(0)+'</div>'
+      +'<div class="user-name">'+u.name+'</div>'
+      +'<div class="user-username">@'+u.username+'</div>'
+      +'<div><span class="user-role-badge role-'+u.role+'">'+(rb[u.role]||u.role)+'</span></div>'
+      +'<div class="user-actions">'
+        +'<button class="btn-edit" onclick="editUser('+u.id+')">&#9998; Editar</button>'
+        + delBtn
+      +'</div></div>';
+  });
+  return '<div class="card">'
+    +'<div class="card-title" style="justify-content:space-between">'
+    +'<span><span class="icon">&#128101;</span>GESTION DE USUARIOS</span>'
+    +'<button class="btn-save" style="padding:8px 16px;font-size:0.72rem" onclick="addUser()">+ NUEVO</button>'
+    +'</div>'
+    +'<div class="users-grid">'+cards+'</div>'
+    +'</div>';
 }
+
+
 function addUser(){
   openModal(`<h2 class="modal-title">👤 NUEVO USUARIO</h2>
   <div class="form-group"><label>Nombre</label><input type="text" id="uName" placeholder="Nombre completo"></div>
@@ -1537,6 +1593,8 @@ function savePreciosUI() {
 
 // Apply prices on load
 applyPrecios();
+
+
 
 </script>
 </body>
