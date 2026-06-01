@@ -10,6 +10,9 @@
 
 
 
+
+
+
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 *{margin:0;padding:0;box-sizing:border-box}
@@ -660,9 +663,38 @@ body.light .chk-card.chk-selected{background:rgba(196,96,126,0.08)}
 body.light .chk-name{color:#2d1a2e}
 body.light .chk-box{background:rgba(255,255,255,0.9)}
 
+
+/* NA card style */
+.na-card .chk-box.na-chk, .na-card .chk-box{
+  font-size:0.6rem;font-family:'Orbitron',monospace;font-weight:700;
+  color:var(--text-dim);border-color:rgba(196,96,126,0.2);background:transparent;
+  letter-spacing:0.5px;
+}
+.na-card.na-active .chk-box{
+  background:rgba(255,215,0,0.15)!important;
+  border-color:var(--star-gold)!important;
+  color:var(--star-gold)!important;
+  box-shadow:0 0 10px rgba(255,215,0,0.2)!important;
+}
+.na-card.na-active{
+  border-color:var(--star-gold)!important;
+  background:rgba(255,215,0,0.06)!important;
+}
+.na-card.na-active .chk-name{color:var(--star-gold)!important}
+.na-card.na-active .chk-price{color:var(--star-gold)!important}
+.na-hint{
+  font-size:0.68rem;color:var(--text-dim);margin-top:4px;
+  display:flex;align-items:center;gap:4px;letter-spacing:0.3px;
+}
+
+
+
 </style>
 </head>
 <body>
+
+
+
 
 
 
@@ -715,821 +747,26 @@ body.light .chk-box{background:rgba(255,255,255,0.9)}
 
 <script>
 
-
-
-
+'use strict';
 
 // ============================================================
-// DATA
+// STORAGE KEYS
 // ============================================================
-const USERS_KEY='ssn_users2', SALES_KEY='ssn_sales2', HISTORY_KEY='ssn_history2';
-const DEFAULT_USERS=[
-  {id:1,name:'Administradora',username:'admin',pass:'1234',role:'admin'},
-  {id:2,name:'María López',username:'maria',pass:'1234',role:'manicurista'},
-  {id:3,name:'Supervisora Ana',username:'ana',pass:'1234',role:'supervisor'},
-];
-const loadUsers=()=>{const s=localStorage.getItem(USERS_KEY);return s?JSON.parse(s):[...DEFAULT_USERS];};
-const saveUsers=u=>localStorage.setItem(USERS_KEY,JSON.stringify(u));
-const loadSales=()=>{const s=localStorage.getItem(SALES_KEY);return s?JSON.parse(s):[];};
-const saveSales=s=>localStorage.setItem(SALES_KEY,JSON.stringify(s));
-const loadHistory=()=>{const s=localStorage.getItem(HISTORY_KEY);return s?JSON.parse(s):[];};
-const saveHistory=h=>localStorage.setItem(HISTORY_KEY,JSON.stringify(h));
-
-let currentUser=null;
+var USERS_KEY   = 'ssn_users2';
+var SALES_KEY   = 'ssn_sales2';
+var HISTORY_KEY = 'ssn_history2';
+var PRECIOS_KEY = 'ssn_precios_v1';
 
 // ============================================================
-// PRICE TABLES (single city — same for both)
+// DEFAULT DATA
 // ============================================================
-const ESTRUCTURAS=[
-  {id:'tips',name:'Acrílico con Tips / Construcción',price:450},
-  {id:'natural',name:'Acrílico sobre uña natural',price:400},
-  {id:'polygel',name:'Polygel / Híbrido',price:500},
-  {id:'softgel',name:'Soft Gel / Tip Full Cover',price:480},
-];
-const LONGITUDES=[
-  {id:'corto',name:'Largo Corto',desc:'Sin recargo (base)',price:0},
-  {id:'medio',name:'Largo Medio',desc:'+$70',price:70},
-  {id:'largo',name:'Largo Largo',desc:'+$70',price:70},
-  {id:'xl',name:'XL / Extra Largo',desc:'+$100',price:100},
-];
-const FORMAS=[
-  {id:'cuadrada',name:'Cuadrada',price:0},
-  {id:'ovalada',name:'Ovalada',price:0},
-  {id:'almendra',name:'Almendra',price:50},
-  {id:'ballerina',name:'Ballerina / Coffin',price:50},
-  {id:'stiletto',name:'Estilete / Stiletto',price:50},
-];
-const ESMALTES=[
-  {id:'liso',name:'Gel Polish Liso',desc:'1 o 2 tonos (incluido)',price:0,base:350},
-  {id:'mate',name:'Efecto Mate',desc:'+$50',price:50,base:0},
-  {id:'ojocat',name:'Efecto Ojo de Gato',desc:'+$120',price:120,base:0},
-  {id:'chrome',name:'Efecto Chrome / Espejo',desc:'+$120',price:120,base:0},
-  {id:'holo',name:'Efecto Holográfico',desc:'+$120',price:120,base:0},
-  {id:'leche',name:'Efecto Leche / Jelly',desc:'+$50',price:50,base:0},
-  {id:'termo',name:'Efecto Termocróm.',desc:'+$150',price:150,base:0},
-];
-// window.ESMALTE_BASE_VAL||350 managed via window.ESMALTE_BASE_VAL from precios module
-
-const DECORACIONES=[
-  {id:'sencilla',name:'Decoración Sencilla',desc:'Puntos, líneas, stickers, glaze',price:100},
-  {id:'frances',name:'Francés Clásico o de color',desc:'',price:80},
-  {id:'ombre',name:'Ombre / Degradado',desc:'',price:150},
-  {id:'marmol',name:'Mármol / Vetas',desc:'',price:180},
-  {id:'avanzado',name:'Diseño Avanzado',desc:'Mano alzada, acuarela, personajes',price:250},
-  {id:'encapsulado',name:'Encapsulado',desc:'Flores, brillos dentro',price:200},
-  {id:'3d',name:'3D / Escultura',desc:'Bulto, flores, gotas',price:300},
-  {id:'arenado',name:'Arenado / Textura',desc:'',price:150},
-  {id:'ninguna',name:'Sin decoración',desc:'',price:0},
+var DEFAULT_USERS = [
+  {id:1, name:'Administradora',  username:'admin', pass:'1234', role:'admin'},
+  {id:2, name:'Maria Lopez',     username:'maria', pass:'1234', role:'manicurista'},
+  {id:3, name:'Supervisora Ana', username:'ana',   pass:'1234', role:'supervisor'},
 ];
 
-const DECO_PIEZAS=[
-  {id:'pieza_sencillo',name:'Sencillo (puntos, stickers)',price:15},
-  {id:'pieza_avanzado',name:'Avanzado (mano alzada)',price:80},
-  {id:'pieza_3d',name:'3D / Escultura',price:120},
-  {id:'pieza_cristal',name:'Cristal / Piedra pequeña',price:15},
-  {id:'pieza_charm',name:'Charm / Cadena',price:30},
-];
-
-const ADICIONALES=[
-  {id:'relleno',name:'Retoque / Relleno (Fill-In)',desc:'Hasta 3 semanas',price:400,standalone:true},
-  {id:'remocion',name:'Remoción completa',desc:'Producto anterior',price:180},
-  {id:'reparacion',name:'Reparación de 1 uña rota',desc:'',price:80},
-  {id:'refuerzo',name:'Refuerzo uñas débiles/mordidas',desc:'',price:100},
-  {id:'masaje',name:'Masaje + aceite de cutícula',desc:'Extra',price:50},
-];
-
-const MATERIALES=[
-  {id:'mat_cristal',name:'Cristal / Piedra (cargo aplicación)',price:15},
-  {id:'mat_charm',name:'Charm / Cadena (cargo aplicación)',price:15},
-  {id:'mat_perla',name:'Perla grande (cargo aplicación)',price:10},
-];
-
-// State
-let calc={
-  estructura:'tips',
-  longitud:'corto',
-  forma:'cuadrada',
-  esmalte:'liso',
-  decoracion:'ninguna',
-  decoPorMano:true, // true = por mano completa, false = por uña
-  decoPieza:'pieza_sencillo',
-  decoPiezaCant:1,
-  adicionales:{relleno:false,remocion:false,reparacion:false,refuerzo:false,masaje:false},
-  materiales:{mat_cristal:0,mat_charm:0,mat_perla:0},
-};
-
-// ============================================================
-// LOGIN
-// ============================================================
-function selectRole(r){
-  document.querySelectorAll('.role-btn').forEach((b,i)=>b.classList.toggle('active',['admin','manicurista','supervisor'][i]===r));
-  const d={admin:{u:'admin',p:'1234'},manicurista:{u:'maria',p:'1234'},supervisor:{u:'ana',p:'1234'}};
-  document.getElementById('loginUser').value=d[r].u;
-  document.getElementById('loginPass').value=d[r].p;
-}
-function doLogin(){
-  const u=document.getElementById('loginUser').value.trim();
-  const p=document.getElementById('loginPass').value.trim();
-  const found=loadUsers().find(x=>x.username===u&&x.pass===p);
-  if(!found){document.getElementById('loginError').style.display='block';return;}
-  document.getElementById('loginError').style.display='none';
-  currentUser=found;
-  document.getElementById('loginScreen').style.display='none';
-  const app=document.getElementById('app');app.style.display='flex';
-  document.getElementById('headerUser').textContent=found.name;
-  buildNav();
-  showTab('calculadora');
-}
-function doLogout(){currentUser=null;document.getElementById('loginScreen').style.display='flex';document.getElementById('app').style.display='none';}
-
-// ============================================================
-// NAV
-// ============================================================
-function buildNav(){
-  const tabs={
-    admin:[{id:'calculadora',label:'💅 Cotizador'},{id:'ventas',label:'⚡ Ventas'},{id:'corte',label:'📊 Corte'},{id:'historial',label:'📋 Historial'},{id:'usuarios',label:'👥 Usuarios'},{id:'precios',label:'⚙ Precios'}],
-    manicurista:[{id:'calculadora',label:'💅 Cotizador'},{id:'historial',label:'📋 Historial'}],
-    supervisor:[{id:'ventas',label:'⚡ Ventas'},{id:'corte',label:'📊 Corte'}],
-  };
-  document.getElementById('mainNav').innerHTML=(tabs[currentUser.role]||tabs.manicurista)
-    .map(t=>`<button class="nav-tab" data-tab="${t.id}" onclick="showTab('${t.id}')">${t.label}</button>`).join('');
-}
-function showTab(id){
-  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
-  const fns={calculadora:buildCalculadora,ventas:buildVentas,corte:buildCorte,historial:buildHistorial,usuarios:buildUsuarios,precios:buildPrecios};
-  document.getElementById('mainContent').innerHTML=(fns[id]||buildCalculadora)();
-}
-
-// ============================================================
-// THEME
-// ============================================================
-let isLight=false;
-function toggleDark(){
-  isLight=!isLight;
-  document.body.classList.toggle('light',isLight);
-  document.querySelector('.dark-toggle').textContent=isLight?'🌑':'🌙';
-}
-
-// ============================================================
-// FORMAT
-// ============================================================
-const fmt=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(n);
-const fmtDate=d=>new Date(d).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
-
-// ============================================================
-// CALC LOGIC
-// ============================================================
-function calcTotal(){
-  const breakdown=[];
-  let total=0;
-
-  // 1. Estructura base
-  const est=ESTRUCTURAS.find(e=>e.id===calc.estructura);
-  total+=est.price;
-  breakdown.push({label:est.name,amount:est.price});
-
-  // 2. Longitud
-  const lon=LONGITUDES.find(l=>l.id===calc.longitud);
-  if(lon.price>0){total+=lon.price;breakdown.push({label:'Longitud: '+lon.name,amount:lon.price});}
-
-  // 3. Forma
-  const frm=FORMAS.find(f=>f.id===calc.forma);
-  if(frm.price>0){total+=frm.price;breakdown.push({label:'Forma: '+frm.name,amount:frm.price});}
-
-  // 4. Esmalte base + efectos
-  var EBV=window.ESMALTE_BASE_VAL||350;
-  total+=EBV;
-  breakdown.push({label:'Gel Polish base',amount:EBV});
-  const esm=ESMALTES.find(e=>e.id===calc.esmalte);
-  if(esm&&esm.price>0){total+=esm.price;breakdown.push({label:'Acabado: '+esm.name,amount:esm.price});}
-
-  // 5. Decoración
-  if(calc.decoracion!=='ninguna'){
-    const deco=DECORACIONES.find(d=>d.id===calc.decoracion);
-    if(deco&&deco.price>0){
-      if(calc.decoPorMano){
-        total+=deco.price;breakdown.push({label:'Decoración (mano completa): '+deco.name,amount:deco.price});
-      } else {
-        const pd=DECO_PIEZAS.find(p=>p.id===calc.decoPieza);
-        if(pd){
-          const sub=pd.price*calc.decoPiezaCant;
-          total+=sub;breakdown.push({label:'Decoración ×'+calc.decoPiezaCant+' uñas: '+pd.name,amount:sub});
-        }
-      }
-    }
-  }
-
-  // 6. Adicionales
-  ADICIONALES.forEach(a=>{
-    if(calc.adicionales[a.id]){total+=a.price;breakdown.push({label:a.name,amount:a.price});}
-  });
-
-  // 7. Materiales
-  MATERIALES.forEach(m=>{
-    const q=calc.materiales[m.id]||0;
-    if(q>0){const s=m.price*q;total+=s;breakdown.push({label:m.name+' ×'+q,amount:s});}
-  });
-
-  total=Math.max(total,200);
-  return {total,breakdown};
-}
-
-function calcTime(){
-  let min=70;
-  if(calc.longitud==='largo')min+=15;
-  if(calc.longitud==='xl')min+=25;
-  if(calc.estructura==='polygel'||calc.estructura==='softgel')min+=15;
-  const deco=DECORACIONES.find(d=>d.id===calc.decoracion);
-  if(deco&&deco.price>=200)min+=30;
-  else if(deco&&deco.price>=100)min+=20;
-  if(calc.adicionales.masaje)min+=15;
-  if(calc.adicionales.remocion)min+=20;
-  const h=Math.floor(min/60),m=min%60;
-  return (h>0?h+'h ':'')+m+'min';
-}
-
-// ============================================================
-// BUILD CALCULATOR UI
-// ============================================================
-function buildCalculadora(){
-  var _c = calc;
-  var ct = calcTotal();
-  var total = ct.total;
-  var breakdown = ct.breakdown;
-  var tiempo = calcTime();
-  var warn200 = total===200 ? '<div class="warning-msg">&#9888; Precio minimo aplicado: $200 MXN</div>' : '';
-  var EBV = window.ESMALTE_BASE_VAL || 350;
-  var decoIsNone = _c.decoracion === 'ninguna';
-
-  // Helper: radio-style chk-card (select only, no deselect — use same value to deselect)
-  function radioCard(key, item, isSelected, priceStr) {
-    return '<div class="chk-card radio-style' + (isSelected?' chk-selected':'') + '" onclick="setCalc(\''+key+'\',\''+item.id+'\')">'
-      + '<div class="chk-box">&#10003;</div>'
-      + '<div class="chk-body">'
-        + '<div class="chk-name">'+item.name+'</div>'
-        + (item.desc ? '<div class="chk-desc">'+item.desc+'</div>' : '')
-        + '<div class="chk-price">'+priceStr+'</div>'
-      + '</div>'
-    + '</div>';
-  }
-
-  // Helper: toggle chk-card (click again to deselect — sets to default/empty)
-  function toggleCard(key, item, defaultId, isSelected, priceStr) {
-    var action = isSelected ? "setCalc('"+key+"','"+defaultId+"')" : "setCalc('"+key+"','"+item.id+"')";
-    return '<div class="chk-card' + (isSelected?' chk-selected':'') + '" onclick="'+action+'">'
-      + '<div class="chk-box">&#10003;</div>'
-      + '<div class="chk-body">'
-        + '<div class="chk-name">'+item.name+'</div>'
-        + (item.desc ? '<div class="chk-desc">'+item.desc+'</div>' : '')
-        + '<div class="chk-price">'+priceStr+'</div>'
-      + '</div>'
-    + '</div>';
-  }
-
-  // Helper: extra checkbox card (boolean toggle via toggleAdicional)
-  function extraChkCard(id, name, desc, price, checked) {
-    return '<div class="chk-card' + (checked?' chk-selected':'') + '" onclick="toggleAdicional(\''+id+'\')">'
-      + '<div class="chk-box">&#10003;</div>'
-      + '<div class="chk-body">'
-        + '<div class="chk-name">'+name+'</div>'
-        + (desc ? '<div class="chk-desc">'+desc+'</div>' : '')
-        + '<div class="chk-price">'+fmt(price)+'</div>'
-      + '</div>'
-    + '</div>';
-  }
-
-  // --- ESTRUCTURA (radio — required, no deselect) ---
-  var estRows = '';
-  ESTRUCTURAS.forEach(function(e){
-    estRows += radioCard('estructura', e, _c.estructura===e.id, fmt(e.price));
-  });
-
-  // --- LONGITUD (radio — required) ---
-  var lonRows = '';
-  LONGITUDES.forEach(function(l){
-    lonRows += radioCard('longitud', l, _c.longitud===l.id, l.price===0 ? 'Base (sin extra)' : '+'+fmt(l.price));
-  });
-
-  // --- FORMA (toggle — cuadrada is "default/free", others add cost) ---
-  var frmRows = '';
-  FORMAS.forEach(function(f){
-    var sel = _c.forma===f.id;
-    // radio behavior for forma too (only one shape at a time)
-    frmRows += radioCard('forma', f, sel, f.price===0 ? 'Sin extra' : '+'+fmt(f.price));
-  });
-
-  // --- ESMALTE (radio for base type, then toggles for efectos) ---
-  var esmRows = '';
-  ESMALTES.forEach(function(e){
-    // liso = default (always selectable, clicking again keeps it)
-    // others = toggle (click to add, click again to go back to liso)
-    var sel = _c.esmalte===e.id;
-    var action;
-    if(e.id === 'liso') {
-      action = "setCalc('esmalte','liso')";
-    } else {
-      // click again to deselect back to liso
-      action = sel ? "setCalc('esmalte','liso')" : "setCalc('esmalte','"+e.id+"')";
-    }
-    esmRows += '<div class="chk-card' + (e.id==='liso'?' radio-style':'') + (sel?' chk-selected':'') + '" onclick="'+action+'">'
-      + '<div class="chk-box">&#10003;</div>'
-      + '<div class="chk-body">'
-        + '<div class="chk-name">'+e.name+'</div>'
-        + (e.desc ? '<div class="chk-desc">'+e.desc+'</div>' : '')
-        + '<div class="chk-price">'+(e.price===0 ? 'Incluido (base '+fmt(EBV)+')' : '+'+fmt(e.price))+'</div>'
-      + '</div>'
-    + '</div>';
-  });
-
-  // --- DECORACIONES (toggle — ninguna is default) ---
-  var decoRows = '';
-  DECORACIONES.forEach(function(d){
-    var sel = _c.decoracion===d.id;
-    var action;
-    if(d.id === 'ninguna') {
-      action = "setCalc('decoracion','ninguna')";
-    } else {
-      action = sel ? "setCalc('decoracion','ninguna')" : "setCalc('decoracion','"+d.id+"')";
-    }
-    decoRows += '<div class="chk-card' + (d.id==='ninguna'?' radio-style':'') + (sel?' chk-selected':'') + '" onclick="'+action+'">'
-      + '<div class="chk-box">&#10003;</div>'
-      + '<div class="chk-body">'
-        + '<div class="chk-name">'+d.name+'</div>'
-        + (d.desc ? '<div class="chk-desc">'+d.desc+'</div>' : '')
-        + '<div class="chk-price">'+(d.price===0 ? 'Sin extra' : '+'+fmt(d.price))+'</div>'
-      + '</div>'
-    + '</div>';
-  });
-
-  // --- DECO EXTRA ---
-  var decoExtra = '';
-  if(!decoIsNone){
-    var manoSel = _c.decoPorMano;
-    var piezaRows = '';
-    if(!manoSel){
-      DECO_PIEZAS.forEach(function(p){
-        var psel = _c.decoPieza===p.id;
-        piezaRows += radioCard('decoPieza', p, psel, fmt(p.price)+'/una');
-      });
-    }
-    decoExtra = '<div style="margin-top:16px">'
-      + '<div class="section-label">&#128073; Como cobrar la decoracion?</div>'
-      + '<div style="display:flex;gap:10px;margin-bottom:14px">'
-        + '<div class="chk-card radio-style' + (manoSel?' chk-selected':'') + '" onclick="setDecoPorMano(true)" style="flex:1">'
-          + '<div class="chk-box">&#10003;</div>'
-          + '<div class="chk-body"><div class="chk-name">Por mano completa</div><div class="chk-price">Precio fijo</div></div>'
-        + '</div>'
-        + '<div class="chk-card radio-style' + (!manoSel?' chk-selected':'') + '" onclick="setDecoPorMano(false)" style="flex:1">'
-          + '<div class="chk-box">&#10003;</div>'
-          + '<div class="chk-body"><div class="chk-name">Por una individual</div><div class="chk-price">Precio x una</div></div>'
-        + '</div>'
-      + '</div>'
-      + (!manoSel
-        ? '<div class="section-label">Tipo por una</div>'
-          + '<div class="chk-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:12px">'
-          + piezaRows + '</div>'
-          + '<div style="display:flex;align-items:center;gap:12px;margin-top:4px">'
-            + '<label style="font-size:0.78rem;color:var(--text-dim);font-family:Orbitron,monospace">CANTIDAD DE UNAS:</label>'
-            + '<input class="qty-input" type="number" min="1" max="10" value="'+_c.decoPiezaCant+'" onchange="setCalc(\'decoPiezaCant\',parseInt(this.value)||1)">'
-            + '<span style="font-size:0.72rem;color:var(--text-dim)">max 10</span>'
-          + '</div>'
-        : '')
-      + '</div>';
-  }
-
-  // --- ADICIONALES ---
-  var adRows = '';
-  ADICIONALES.forEach(function(a){
-    adRows += extraChkCard(a.id, a.name, a.desc||'', a.price, !!_c.adicionales[a.id]);
-  });
-
-  // --- MATERIALES ---
-  var matRows = '';
-  MATERIALES.forEach(function(m){
-    var q = _c.materiales[m.id] || 0;
-    matRows += '<div class="chk-card' + (q>0?' chk-selected':'') + '" style="cursor:default">'
-      + '<div class="chk-box" style="' + (q>0?'background:var(--saber-glow);border-color:var(--saber-glow);color:#fff':'') + '">&#10003;</div>'
-      + '<div class="chk-body">'
-        + '<div class="chk-name">'+m.name+'</div>'
-        + '<div class="chk-desc">Cargo por pieza aplicada</div>'
-        + '<div class="chk-price">'+fmt(m.price)+' / pieza</div>'
-      + '</div>'
-      + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'
-        + '<input class="qty-input" type="number" min="0" max="100" value="'+q+'" onchange="setMaterial(\''+m.id+'\',this.value)" style="width:60px">'
-        + '<span style="font-size:0.7rem;color:var(--text-dim)">pzs</span>'
-      + '</div>'
-    + '</div>';
-  });
-
-  // --- BREAKDOWN ---
-  var bkRows = '';
-  breakdown.forEach(function(b){
-    bkRows += '<li><span>'+b.label+'</span><span>'+fmt(b.amount)+'</span></li>';
-  });
-  bkRows += '<li><span>TOTAL</span><span>'+fmt(total)+'</span></li>';
-
-  var saleBtn = (currentUser && currentUser.role !== 'supervisor')
-    ? '<button class="btn-sale" onclick="registerSale()">&#128176; VENTA</button>' : '';
-
-  return '<div id="calcGrid" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">'
-  + '<div>'
-
-  // ESTRUCTURA
-  + '<div class="card">'
-    + '<div class="card-title"><span class="icon">&#128302;</span>TIPO DE ESTRUCTURA</div>'
-    + '<div class="chk-grid">'+estRows+'</div>'
-  + '</div>'
-
-  // LONGITUD
-  + '<div class="card">'
-    + '<div class="card-title"><span class="icon">&#128207;</span>LONGITUD</div>'
-    + '<div class="chk-grid">'+lonRows+'</div>'
-  + '</div>'
-
-  // FORMA
-  + '<div class="card">'
-    + '<div class="card-title"><span class="icon">&#128142;</span>FORMA</div>'
-    + '<div class="chk-grid">'+frmRows+'</div>'
-  + '</div>'
-
-  // ESMALTE
-  + '<div class="card">'
-    + '<div class="card-title"><span class="icon">&#10024;</span>ESMALTE Y ACABADO</div>'
-    + '<div class="deselect-hint">&#9432; El Gel Polish base ('+fmt(EBV)+') siempre se incluye &mdash; selecciona efecto adicional (toca de nuevo para quitar)</div>'
-    + '<div class="chk-grid" style="margin-top:10px">'+esmRows+'</div>'
-  + '</div>'
-
-  // DECORACION
-  + '<div class="card">'
-    + '<div class="card-title"><span class="icon">&#127912;</span>DECORACION</div>'
-    + '<div class="deselect-hint">&#9432; Selecciona un tipo &mdash; toca de nuevo para deseleccionar</div>'
-    + '<div class="chk-grid-wide" style="margin-top:10px">'+decoRows+'</div>'
-    + decoExtra
-  + '</div>'
-
-  // ADICIONALES
-  + '<div class="card">'
-    + '<div class="card-title"><span class="icon">&#11088;</span>ADICIONALES Y MANTENIMIENTO</div>'
-    + '<div class="deselect-hint">&#9432; Selecciona los que apliquen &mdash; toca de nuevo para quitar</div>'
-    + '<div class="chk-grid-2" style="margin-top:10px">'+adRows+'</div>'
-  + '</div>'
-
-  // MATERIALES
-  + '<div class="card">'
-    + '<div class="card-title"><span class="icon">&#128141;</span>CARGO DE MATERIAL EXTRA</div>'
-    + '<div class="deselect-hint">&#9432; Captura la cantidad de piezas a colocar</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">'+matRows+'</div>'
-  + '</div>'
-
-  + '</div>'  // end left col
-
-  // RIGHT COL — TOTAL
-  + '<div>'
-    + '<div class="total-box">'
-      + '<div class="total-label">ESTIMADO TOTAL</div>'
-      + '<div class="total-amount">'+fmt(total)+'</div>'
-      + '<div style="margin-top:4px;font-size:0.68rem;color:var(--text-dim);font-family:Orbitron,monospace;letter-spacing:1px">MXN &mdash; STAR SHINE NAILS</div>'
-      + '<div style="margin:14px 0 8px;height:1px;background:linear-gradient(90deg,transparent,rgba(196,96,126,0.4),transparent)"></div>'
-      + '<ul class="breakdown">'+bkRows+'</ul>'
-      + '<div class="time-badge">&#9201; '+tiempo+' aprox.</div>'
-      + warn200
-      + '<div class="total-actions">'
-        + '<button class="btn-reset" onclick="resetCalc()">&#8635; RESET</button>'
-        + '<button class="btn-pdf" onclick="downloadPDF()">&#128196; PDF</button>'
-        + saleBtn
-      + '</div>'
-    + '</div>'
-  + '</div>'
-  + '</div>';  // end grid
-}
-
-// ============================================================
-// CALC SETTERS
-// ============================================================
-function setCalc(key,val){
-  if(key==='decoPiezaCant')calc[key]=Math.min(10,Math.max(1,val));
-  else calc[key]=val;
-  refreshCalc();
-}
-function setDecoPorMano(v){calc.decoPorMano=v;refreshCalc();}
-function toggleAdicional(id){calc.adicionales[id]=!calc.adicionales[id];refreshCalc();}
-function setMaterial(id,v){calc.materiales[id]=Math.max(0,parseInt(v)||0);refreshCalc();}
-function refreshCalc(){
-  if(document.querySelector('.nav-tab[data-tab="calculadora"]')?.classList.contains('active'))
-    document.getElementById('mainContent').innerHTML=buildCalculadora();
-}
-function resetCalc(){
-  calc={estructura:'tips',longitud:'corto',forma:'cuadrada',esmalte:'liso',decoracion:'ninguna',decoPorMano:true,decoPieza:'pieza_sencillo',decoPiezaCant:1,adicionales:{relleno:false,remocion:false,reparacion:false,refuerzo:false,masaje:false},materiales:{mat_cristal:0,mat_charm:0,mat_perla:0}};
-  refreshCalc();
-}
-
-// ============================================================
-// PDF
-// ============================================================
-function downloadPDF(){
-  var ct=calcTotal(); var total=ct.total; var breakdown=ct.breakdown;
-  var date=new Date().toLocaleString('es-MX');
-  var tiempo=calcTime();
-  var bkRows='';
-  breakdown.forEach(function(b){ bkRows+='<tr><td>'+b.label+'</td><td>'+fmt(b.amount)+'</td></tr>'; });
-  bkRows+='<tr class="total-row"><td>TOTAL</td><td>'+fmt(total)+'</td></tr>';
-  var logoSrc = document.querySelector('#loginScreen img') ? document.querySelector('#loginScreen img').src : '';
-  var logoHTML = logoSrc ? '<img src="'+logoSrc+'" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid rgba(196,96,126,0.5);box-shadow:0 0 20px rgba(196,96,126,0.4);display:block;margin-bottom:10px">' : '';
-  var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>Cotizacion Star Shine Nails</title>'
-    +'<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Exo+2:wght@300;400;500&display=swap" rel="stylesheet">'
-    +'<style>'
-    +'*{margin:0;padding:0;box-sizing:border-box}'
-    +'body{font-family:Exo 2,sans-serif;background:#05010a;color:#e8d8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}'
-    +'.page{max-width:480px;width:100%;background:rgba(13,6,32,0.97);border:1px solid rgba(196,96,126,0.35);border-radius:20px;padding:36px;box-shadow:0 0 60px rgba(196,96,126,0.15)}'
-    +'.header{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(196,96,126,0.2)}'
-    +'.logo-wrap{display:flex;justify-content:center;margin-bottom:14px}'
-    +'h1{font-family:Orbitron,monospace;font-size:1.2rem;color:#ff6b9d;letter-spacing:1px}'
-    +'.tagline{font-size:0.72rem;color:#8b7099;letter-spacing:2px;text-transform:uppercase;margin-top:4px}'
-    +'.meta{font-size:0.75rem;color:#8b7099;margin-top:8px}'
-    +'.saber{height:1px;background:linear-gradient(90deg,transparent,#c4607e,#ffd700,#c4607e,transparent);margin:20px 0;box-shadow:0 0 6px rgba(196,96,126,0.4)}'
-    +'table{width:100%;border-collapse:collapse}'
-    +'td{padding:9px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.87rem;color:#e8d8f0}'
-    +'td:last-child{text-align:right;font-family:Orbitron,monospace;font-weight:600;color:#d4a857}'
-    +'.total-row td{font-size:1rem;font-weight:700;color:#ff6b9d;border-top:1px solid rgba(196,96,126,0.3);border-bottom:none;padding-top:14px}'
-    +'.total-row td:last-child{color:#ff6b9d}'
-    +'.footer{font-size:0.72rem;color:#8b7099;margin-top:20px;padding-top:14px;border-top:1px solid rgba(196,96,126,0.15);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}'
-    +'.time{display:inline-flex;align-items:center;gap:6px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:6px;padding:5px 10px;font-size:0.72rem;color:#4fc3f7;font-family:Orbitron,monospace;margin-top:12px}'
-    +'.print-btn{display:block;width:100%;margin-top:20px;padding:12px;background:linear-gradient(135deg,#c4607e,#7b3f6e);color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:Orbitron,monospace;font-size:0.8rem;letter-spacing:1px;font-weight:700}'
-    +'@media print{.print-btn{display:none}body{background:white}}'
-    +'</style></head><body>'
-    +'<div class="page">'
-      +'<div class="header">'
-        +'<div class="logo-wrap">'+logoHTML+'</div>'
-        +'<h1>&#9733; STAR SHINE NAILS</h1>'
-        +'<div class="tagline">Beauty is your destiny</div>'
-        +'<div class="meta">Cotizacion &mdash; '+date+'</div>'
-        +(currentUser ? '<div class="meta">Nail Artist: '+currentUser.name+'</div>' : '')
-      +'</div>'
-      +'<div class="saber"></div>'
-      +'<table>'+bkRows+'</table>'
-      +'<div class="time">&#9201; Tiempo estimado: '+tiempo+'</div>'
-      +'<div class="footer">'
-        +'<span>&#10022; Cotizacion valida el dia de hoy</span>'
-        +'<span>Star Shine Nails</span>'
-      +'</div>'
-      +'<button class="print-btn" onclick="window.print()">&#128196; IMPRIMIR / GUARDAR PDF</button>'
-    +'</div>'
-    +'</body></html>');
-  w.document.close();
-  var h=loadHistory();
-  h.unshift({id:Date.now(),total:total,breakdown:breakdown,date:new Date().toISOString(),user:currentUser.name,tiempo:tiempo});
-  if(h.length>5)h.pop();
-  saveHistory(h);
-}
-
-
-function registerSale(){
-  const {total}=calcTotal();
-  openModal(`<h2 class="modal-title">⚡ REGISTRAR VENTA</h2>
-  <div class="form-group"><label>Cliente</label><input type="text" id="saleClient" placeholder="Nombre del cliente"></div>
-  <div class="form-group"><label>Método de pago</label>
-    <select id="saleMethod">
-      <option value="efectivo">💵 Efectivo</option>
-      <option value="transferencia">📱 Transferencia</option>
-      <option value="tarjeta">💳 Tarjeta</option>
-    </select>
-  </div>
-  <div style="background:rgba(196,96,126,0.08);border:1px solid rgba(196,96,126,0.2);border-radius:12px;padding:16px;margin-bottom:16px">
-    <div style="font-size:0.68rem;color:var(--text-dim);font-family:'Orbitron',monospace;letter-spacing:1px">TOTAL A COBRAR</div>
-    <div style="font-family:'Orbitron',monospace;font-size:1.8rem;color:var(--saber-glow);font-weight:700">${fmt(total)}</div>
-  </div>
-  <div class="modal-actions">
-    <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-    <button class="btn-save" onclick="confirmSale(${total})">✅ CONFIRMAR</button>
-  </div>`);
-}
-function confirmSale(total){
-  const client=document.getElementById('saleClient').value||'Cliente';
-  const method=document.getElementById('saleMethod').value;
-  const {breakdown}=calcTotal();
-  const sales=loadSales();
-  sales.push({id:Date.now(),client,method,total,breakdown,date:new Date().toISOString(),user:currentUser.name});
-  saveSales(sales);
-  closeModal();
-  showNotif('✅ Venta registrada correctamente');
-}
-
-// ============================================================
-// VENTAS
-// ============================================================
-function buildVentas(){
-  var sales=loadSales();
-  var today=new Date().toDateString();
-  var totalDay=sales.filter(function(s){return new Date(s.date).toDateString()===today;}).reduce(function(a,s){return a+s.total;},0);
-  var totalAll=sales.reduce(function(a,s){return a+s.total;},0);
-  var ml={efectivo:'&#128181; Efectivo',transferencia:'&#128241; Transferencia',tarjeta:'&#128179; Tarjeta'};
-  var rows='';
-  if(sales.length===0){
-    rows='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-dim);font-family:Orbitron,monospace;font-size:0.8rem">SIN VENTAS REGISTRADAS</td></tr>';
-  } else {
-    var rev=[].concat(sales).reverse();
-    rev.forEach(function(s){
-      rows+='<tr><td>'+fmtDate(s.date)+'</td><td>'+s.client+'</td>'
-        +'<td><span class="badge badge-green">'+(ml[s.method]||s.method)+'</span></td>'
-        +'<td style="font-family:Orbitron,monospace;color:var(--saber-glow);font-weight:700">'+fmt(s.total)+'</td>'
-        +'<td>'+s.user+'</td></tr>';
-    });
-  }
-  var clearBtn = currentUser.role==='admin' ? '<div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearSales()">&#128465; Limpiar ventas</button></div>' : '';
-  return '<div class="stats-grid">'
-    +'<div class="stat-card"><div class="stat-value">'+fmt(totalDay)+'</div><div class="stat-label">Ventas Hoy</div></div>'
-    +'<div class="stat-card"><div class="stat-value">'+fmt(totalAll)+'</div><div class="stat-label">Total Acumulado</div></div>'
-    +'<div class="stat-card"><div class="stat-value">'+sales.length+'</div><div class="stat-label">Servicios</div></div>'
-    +'<div class="stat-card"><div class="stat-value">'+(sales.length?fmt(totalAll/sales.length):'$0')+'</div><div class="stat-label">Ticket Promedio</div></div>'
-    +'</div>'
-    +'<div class="card">'
-    +'<div class="card-title"><span class="icon">&#9889;</span>REGISTRO DE VENTAS</div>'
-    +'<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Metodo</th><th>Total</th><th>Nail Artist</th></tr></thead>'
-    +'<tbody>'+rows+'</tbody></table></div>'
-    + clearBtn
-    +'</div>';
-}
-
-
-function clearSales(){if(confirm('¿Limpiar todas las ventas?')){saveSales([]);showTab('ventas');}}
-
-// ============================================================
-// CORTE
-// ============================================================
-function buildCorte(){
-  const today=new Date().toISOString().split('T')[0];
-  return `<div class="card">
-  <div class="card-title"><span class="icon">📊</span>CORTE DEL DÍA</div>
-  <div class="cut-period">
-    <input type="date" id="cutFrom" value="${today}">
-    <span style="color:var(--text-dim)">—</span>
-    <input type="date" id="cutTo" value="${today}">
-    <button class="btn-gen-cut" onclick="generateCut()">GENERAR</button>
-  </div>
-  <div id="cutResult"></div>
-</div>`;
-}
-function generateCut(){
-  var from=new Date(document.getElementById('cutFrom').value);
-  var to=new Date(document.getElementById('cutTo').value);to.setHours(23,59,59);
-  var sales=loadSales().filter(function(s){var d=new Date(s.date);return d>=from&&d<=to;});
-  var total=sales.reduce(function(a,s){return a+s.total;},0);
-  var byMethod={},byUser={};
-  sales.forEach(function(s){
-    byMethod[s.method]=(byMethod[s.method]||0)+s.total;
-    byUser[s.user]=(byUser[s.user]||0)+s.total;
-  });
-  var ml={efectivo:'&#128181; Efectivo',transferencia:'&#128241; Transferencia',tarjeta:'&#128179; Tarjeta'};
-  var mRows='',uRows='';
-  Object.keys(byMethod).forEach(function(m){
-    mRows+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem">'
-      +'<span>'+(ml[m]||m)+'</span><span style="font-family:Orbitron,monospace;color:var(--saber-glow)">'+fmt(byMethod[m])+'</span></div>';
-  });
-  Object.keys(byUser).forEach(function(u){
-    uRows+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem">'
-      +'<span>&#128133; '+u+'</span><span style="font-family:Orbitron,monospace;color:var(--saber-glow)">'+fmt(byUser[u])+'</span></div>';
-  });
-  document.getElementById('cutResult').innerHTML=
-    '<div class="cut-summary">'
-    +'<div class="cut-stat"><div class="cut-stat-value">'+fmt(total)+'</div><div class="cut-stat-label">Total Periodo</div></div>'
-    +'<div class="cut-stat"><div class="cut-stat-value">'+sales.length+'</div><div class="cut-stat-label">Servicios</div></div>'
-    +'<div class="cut-stat"><div class="cut-stat-value">'+(sales.length?fmt(total/sales.length):'$0')+'</div><div class="cut-stat-label">Ticket Prom.</div></div>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
-    +'<div><div class="section-label">Por Metodo</div>'+(mRows||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>')+'</div>'
-    +'<div><div class="section-label">Por Nail Artist</div>'+(uRows||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>')+'</div>'
-    +'</div>'
-    +'<div style="margin-top:16px"><button class="btn-pdf" onclick="printCut()">&#128424; IMPRIMIR CORTE</button></div>';
-}
-
-
-function printCut(){
-  const from=document.getElementById('cutFrom').value;
-  const to=document.getElementById('cutTo').value;
-  const sales=loadSales().filter(s=>{const d=new Date(s.date);return d>=new Date(from)&&d<=new Date(to+'T23:59:59');});
-  const total=sales.reduce((a,s)=>a+s.total,0);
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Corte Star Shine Nails</title>
-  <style>body{font-family:sans-serif;margin:40px;max-width:400px}h1{color:#c4607e}p{margin:6px 0}.total{font-size:1.4rem;font-weight:700;color:#c4607e}</style>
-  </head><body><h1>★ Star Shine Nails — Corte</h1><p>${from} al ${to}</p><p>Servicios: <strong>${sales.length}</strong></p>
-  <p class="total">Total: ${fmt(total)}</p><br><button onclick="window.print()">Imprimir</button></body></html>`);
-  w.document.close();
-}
-
-// ============================================================
-// HISTORIAL
-// ============================================================
-function buildHistorial(){
-  var h=loadHistory();
-  var rows='';
-  if(h.length===0){
-    rows='<p style="color:var(--text-dim);text-align:center;padding:32px;font-family:Orbitron,monospace;font-size:0.8rem">SIN COTIZACIONES GUARDADAS</p>';
-  } else {
-    var listItems='';
-    h.forEach(function(q){
-      listItems+='<div class="history-item">'
-        +'<div><div class="history-date">&#9201; '+fmtDate(q.date)+' &middot; '+q.user+'</div></div>'
-        +'<div class="history-total">'+fmt(q.total)+'</div>'
-        +'</div>';
-    });
-    rows='<div class="history-list">'+listItems+'</div>';
-  }
-  return '<div class="card">'
-    +'<div class="card-title"><span class="icon">&#128203;</span>ULTIMAS 5 COTIZACIONES</div>'
-    + rows
-    +'<div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearHistory()">&#128465; Limpiar</button></div>'
-    +'</div>';
-}
-
-
-function clearHistory(){if(confirm('¿Limpiar historial?')){saveHistory([]);showTab('historial');}}
-
-// ============================================================
-// USUARIOS
-// ============================================================
-function buildUsuarios(){
-  var users=loadUsers();
-  var rb={admin:'&#128081; ADMIN',manicurista:'&#128133; NAIL ARTIST',supervisor:'&#128202; SUPERVISOR'};
-  var cards='';
-  users.forEach(function(u){
-    var delBtn = u.id!==1 ? '<button class="btn-delete" onclick="deleteUser('+u.id+')">&#10005; Eliminar</button>' : '';
-    cards+='<div class="user-card">'
-      +'<div class="user-avatar">'+u.name.charAt(0)+'</div>'
-      +'<div class="user-name">'+u.name+'</div>'
-      +'<div class="user-username">@'+u.username+'</div>'
-      +'<div><span class="user-role-badge role-'+u.role+'">'+(rb[u.role]||u.role)+'</span></div>'
-      +'<div class="user-actions">'
-        +'<button class="btn-edit" onclick="editUser('+u.id+')">&#9998; Editar</button>'
-        + delBtn
-      +'</div></div>';
-  });
-  return '<div class="card">'
-    +'<div class="card-title" style="justify-content:space-between">'
-    +'<span><span class="icon">&#128101;</span>GESTION DE USUARIOS</span>'
-    +'<button class="btn-save" style="padding:8px 16px;font-size:0.72rem" onclick="addUser()">+ NUEVO</button>'
-    +'</div>'
-    +'<div class="users-grid">'+cards+'</div>'
-    +'</div>';
-}
-
-
-function addUser(){
-  openModal(`<h2 class="modal-title">👤 NUEVO USUARIO</h2>
-  <div class="form-group"><label>Nombre</label><input type="text" id="uName" placeholder="Nombre completo"></div>
-  <div class="form-group"><label>Usuario</label><input type="text" id="uUser" placeholder="usuario"></div>
-  <div class="form-group"><label>Contraseña</label><input type="password" id="uPass" placeholder="••••••"></div>
-  <div class="form-group"><label>Rol</label>
-    <select id="uRole"><option value="manicurista">💅 Nail Artist</option><option value="supervisor">📊 Supervisor</option><option value="admin">👑 Admin</option></select>
-  </div>
-  <div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-save" onclick="saveNewUser()">GUARDAR</button></div>`);
-}
-function saveNewUser(){
-  const n=document.getElementById('uName').value.trim(),u=document.getElementById('uUser').value.trim(),p=document.getElementById('uPass').value.trim(),r=document.getElementById('uRole').value;
-  if(!n||!u||!p){alert('Completa todos los campos');return;}
-  const users=loadUsers();users.push({id:Date.now(),name:n,username:u,pass:p,role:r});saveUsers(users);closeModal();showTab('usuarios');
-}
-function editUser(id){
-  const u=loadUsers().find(x=>x.id===id);if(!u)return;
-  openModal(`<h2 class="modal-title">✏ EDITAR USUARIO</h2>
-  <div class="form-group"><label>Nombre</label><input type="text" id="eeName" value="${u.name}"></div>
-  <div class="form-group"><label>Usuario</label><input type="text" id="eeUser" value="${u.username}"></div>
-  <div class="form-group"><label>Contraseña</label><input type="password" id="eePass" value="${u.pass}"></div>
-  <div class="form-group"><label>Rol</label>
-    <select id="eeRole"><option value="manicurista" ${u.role==='manicurista'?'selected':''}>💅 Nail Artist</option><option value="supervisor" ${u.role==='supervisor'?'selected':''}>📊 Supervisor</option><option value="admin" ${u.role==='admin'?'selected':''}>👑 Admin</option></select>
-  </div>
-  <div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-save" onclick="updateUser(${id})">GUARDAR</button></div>`);
-}
-function updateUser(id){
-  const users=loadUsers(),i=users.findIndex(x=>x.id===id);if(i<0)return;
-  users[i]={...users[i],name:document.getElementById('eeName').value.trim(),username:document.getElementById('eeUser').value.trim(),pass:document.getElementById('eePass').value.trim(),role:document.getElementById('eeRole').value};
-  saveUsers(users);closeModal();showTab('usuarios');
-}
-function deleteUser(id){if(!confirm('¿Eliminar usuario?'))return;saveUsers(loadUsers().filter(x=>x.id!==id));showTab('usuarios');}
-
-// ============================================================
-// MODAL & NOTIF
-// ============================================================
-function openModal(html){document.getElementById('modalContent').innerHTML=html;document.getElementById('modal').classList.add('open');}
-function closeModal(){document.getElementById('modal').classList.remove('open');}
-document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
-function showNotif(msg){
-  const n=document.createElement('div');
-  n.textContent=msg;
-  n.style.cssText='position:fixed;bottom:24px;right:24px;background:rgba(13,6,32,0.97);border:1px solid rgba(196,96,126,0.4);color:#e8d8f0;padding:12px 24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:9999;font-size:0.85rem;font-family:Orbitron,monospace;animation:fadeIn 0.3s ease;letter-spacing:0.5px';
-  document.body.appendChild(n);setTimeout(()=>n.remove(),3000);
-}
-window.addEventListener('resize',()=>{const g=document.getElementById('calcGrid');if(g)g.style.gridTemplateColumns=window.innerWidth<900?'1fr':'1fr 340px';});
-
-
-
-// ============================================================
-// PRECIOS ADMIN MODULE
-// ============================================================
-const PRECIOS_KEY = 'ssn_precios_v1';
-
-const DEFAULT_PRECIOS = {
+var DEFAULT_PRECIOS = {
   estructuras: [
     {id:'tips',    name:'Acrilico con Tips / Construccion', price:450},
     {id:'natural', name:'Acrilico sobre una natural',       price:400},
@@ -1537,17 +774,17 @@ const DEFAULT_PRECIOS = {
     {id:'softgel', name:'Soft Gel / Tip Full Cover',        price:480},
   ],
   longitudes: [
-    {id:'corto', name:'Largo Corto',     desc:'Sin recargo (base)', price:0},
-    {id:'medio', name:'Largo Medio',     desc:'+$70',               price:70},
-    {id:'largo', name:'Largo Largo',     desc:'+$70',               price:70},
-    {id:'xl',    name:'XL / Extra Largo',desc:'+$100',              price:100},
+    {id:'corto', name:'Largo Corto',      desc:'Sin recargo (base)', price:0},
+    {id:'medio', name:'Largo Medio',      desc:'+$70',               price:70},
+    {id:'largo', name:'Largo Largo',      desc:'+$70',               price:70},
+    {id:'xl',    name:'XL / Extra Largo', desc:'+$100',              price:100},
   ],
   formas: [
-    {id:'cuadrada',  name:'Cuadrada',           price:0},
-    {id:'ovalada',   name:'Ovalada',            price:0},
-    {id:'almendra',  name:'Almendra',           price:50},
-    {id:'ballerina', name:'Ballerina / Coffin', price:50},
-    {id:'stiletto',  name:'Estilete / Stiletto',price:50},
+    {id:'cuadrada',  name:'Cuadrada',            price:0},
+    {id:'ovalada',   name:'Ovalada',             price:0},
+    {id:'almendra',  name:'Almendra',            price:50},
+    {id:'ballerina', name:'Ballerina / Coffin',  price:50},
+    {id:'stiletto',  name:'Estilete / Stiletto', price:50},
   ],
   esmalte_base: 350,
   esmaltes: [
@@ -1560,15 +797,15 @@ const DEFAULT_PRECIOS = {
     {id:'termo',  name:'Efecto Termocromico',    desc:'',            price:150},
   ],
   decoraciones: [
-    {id:'sencilla',    name:'Decoracion Sencilla',    desc:'Puntos, lineas, stickers, glaze', price:100},
-    {id:'frances',     name:'Frances Clasico o color',desc:'',                                price:80},
-    {id:'ombre',       name:'Ombre / Degradado',      desc:'',                                price:150},
-    {id:'marmol',      name:'Marmol / Vetas',         desc:'',                                price:180},
-    {id:'avanzado',    name:'Diseno Avanzado',        desc:'Mano alzada, acuarela, personajes',price:250},
-    {id:'encapsulado', name:'Encapsulado',            desc:'Flores, brillos dentro',           price:200},
-    {id:'3d',          name:'3D / Escultura',         desc:'Bulto, flores, gotas',             price:300},
-    {id:'arenado',     name:'Arenado / Textura',      desc:'',                                price:150},
-    {id:'ninguna',     name:'Sin decoracion',         desc:'',                                price:0},
+    {id:'sencilla',    name:'Decoracion Sencilla',     desc:'Puntos, lineas, stickers, glaze', price:100},
+    {id:'frances',     name:'Frances Clasico o color', desc:'',                                price:80},
+    {id:'ombre',       name:'Ombre / Degradado',       desc:'',                                price:150},
+    {id:'marmol',      name:'Marmol / Vetas',          desc:'',                                price:180},
+    {id:'avanzado',    name:'Diseno Avanzado',         desc:'Mano alzada, acuarela, personajes',price:250},
+    {id:'encapsulado', name:'Encapsulado',             desc:'Flores, brillos dentro',           price:200},
+    {id:'3d',          name:'3D / Escultura',          desc:'Bulto, flores, gotas',             price:300},
+    {id:'arenado',     name:'Arenado / Textura',       desc:'',                                price:150},
+    {id:'ninguna',     name:'Sin decoracion',          desc:'',                                price:0},
   ],
   deco_piezas: [
     {id:'pieza_sencillo', name:'Sencillo (puntos, stickers)', price:15},
@@ -1585,137 +822,883 @@ const DEFAULT_PRECIOS = {
     {id:'masaje',    name:'Masaje + aceite de cuticula', desc:'Extra',            price:50},
   ],
   materiales: [
-    {id:'mat_cristal', name:'Cristal / Piedra (cargo aplicacion)', price:15},
-    {id:'mat_charm',   name:'Charm / Cadena (cargo aplicacion)',   price:15},
-    {id:'mat_perla',   name:'Perla grande (cargo aplicacion)',     price:10},
+    {id:'mat_cristal', name:'Cristal / Piedra (cargo)', price:15},
+    {id:'mat_charm',   name:'Charm / Cadena (cargo)',   price:15},
+    {id:'mat_perla',   name:'Perla grande (cargo)',     price:10},
   ],
 };
 
-function loadPrecios() {
-  const saved = localStorage.getItem(PRECIOS_KEY);
-  const merged = JSON.parse(JSON.stringify(DEFAULT_PRECIOS));
-  if (!saved) return merged;
-  const custom = JSON.parse(saved);
-  merged.esmalte_base = (custom.esmalte_base !== undefined) ? custom.esmalte_base : merged.esmalte_base;
-  ['estructuras','longitudes','formas','esmaltes','decoraciones','deco_piezas','adicionales','materiales'].forEach(key => {
-    if (custom[key]) {
-      merged[key].forEach(item => {
-        const s = custom[key].find(x => x.id === item.id);
-        if (s) item.price = s.price;
-      });
-    }
-  });
-  return merged;
-}
+// ============================================================
+// LIVE PRICE ARRAYS (mutable — filled by applyPrecios)
+// ============================================================
+var ESTRUCTURAS  = [];
+var LONGITUDES   = [];
+var FORMAS       = [];
+var ESMALTES     = [];
+var DECORACIONES = [];
+var DECO_PIEZAS  = [];
+var ADICIONALES  = [];
+var MATERIALES   = [];
+var ESMALTE_BASE_VAL = 350;
 
-function savePrecios(p) {
-  localStorage.setItem(PRECIOS_KEY, JSON.stringify(p));
+// ============================================================
+// STORAGE HELPERS
+// ============================================================
+function loadUsers() {
+  try { var s = localStorage.getItem(USERS_KEY); return s ? JSON.parse(s) : DEFAULT_USERS.map(function(u){return Object.assign({},u);}); }
+  catch(e) { return DEFAULT_USERS.map(function(u){return Object.assign({},u);}); }
 }
+function saveUsers(u)   { localStorage.setItem(USERS_KEY,   JSON.stringify(u)); }
+function loadSales()    { try { var s=localStorage.getItem(SALES_KEY);   return s?JSON.parse(s):[]; } catch(e){return [];} }
+function saveSales(s)   { localStorage.setItem(SALES_KEY,   JSON.stringify(s)); }
+function loadHistory()  { try { var s=localStorage.getItem(HISTORY_KEY); return s?JSON.parse(s):[]; } catch(e){return [];} }
+function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+
+function loadPrecios() {
+  try {
+    var saved = localStorage.getItem(PRECIOS_KEY);
+    var base  = JSON.parse(JSON.stringify(DEFAULT_PRECIOS));
+    if (!saved) return base;
+    var custom = JSON.parse(saved);
+    if (typeof custom.esmalte_base === 'number') base.esmalte_base = custom.esmalte_base;
+    ['estructuras','longitudes','formas','esmaltes','decoraciones','deco_piezas','adicionales','materiales'].forEach(function(key) {
+      if (custom[key] && Array.isArray(custom[key])) {
+        base[key].forEach(function(item) {
+          var c = custom[key].find(function(x){ return x.id === item.id; });
+          if (c && typeof c.price === 'number') item.price = c.price;
+        });
+      }
+    });
+    return base;
+  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_PRECIOS)); }
+}
+function savePrecios(p) { localStorage.setItem(PRECIOS_KEY, JSON.stringify(p)); }
 
 function applyPrecios() {
-  const p = loadPrecios();
-  ESTRUCTURAS.length = 0; p.estructuras.forEach(x => ESTRUCTURAS.push(x));
-  LONGITUDES.length  = 0; p.longitudes.forEach(x => LONGITUDES.push(x));
-  FORMAS.length      = 0; p.formas.forEach(x => FORMAS.push(x));
-  window.ESMALTE_BASE_VAL = p.esmalte_base;
-  ESMALTES.length    = 0; p.esmaltes.forEach(x => ESMALTES.push(x));
-  DECORACIONES.length= 0; p.decoraciones.forEach(x => DECORACIONES.push(x));
-  DECO_PIEZAS.length = 0; p.deco_piezas.forEach(x => DECO_PIEZAS.push(x));
-  ADICIONALES.length = 0; p.adicionales.forEach(x => ADICIONALES.push(x));
-  MATERIALES.length  = 0; p.materiales.forEach(x => MATERIALES.push(x));
+  var p = loadPrecios();
+  ESTRUCTURAS_fill(p.estructuras);
+  LONGITUDES_fill(p.longitudes);
+  FORMAS_fill(p.formas);
+  ESMALTES_fill(p.esmaltes);
+  DECORACIONES_fill(p.decoraciones);
+  DECO_PIEZAS_fill(p.deco_piezas);
+  ADICIONALES_fill(p.adicionales);
+  MATERIALES_fill(p.materiales);
+  ESMALTE_BASE_VAL = p.esmalte_base || 350;
+}
+function ESTRUCTURAS_fill(arr)  { ESTRUCTURAS.length=0;  arr.forEach(function(x){ESTRUCTURAS.push(x);}); }
+function LONGITUDES_fill(arr)   { LONGITUDES.length=0;   arr.forEach(function(x){LONGITUDES.push(x);}); }
+function FORMAS_fill(arr)       { FORMAS.length=0;        arr.forEach(function(x){FORMAS.push(x);}); }
+function ESMALTES_fill(arr)     { ESMALTES.length=0;      arr.forEach(function(x){ESMALTES.push(x);}); }
+function DECORACIONES_fill(arr) { DECORACIONES.length=0;  arr.forEach(function(x){DECORACIONES.push(x);}); }
+function DECO_PIEZAS_fill(arr)  { DECO_PIEZAS.length=0;  arr.forEach(function(x){DECO_PIEZAS.push(x);}); }
+function ADICIONALES_fill(arr)  { ADICIONALES.length=0;  arr.forEach(function(x){ADICIONALES.push(x);}); }
+function MATERIALES_fill(arr)   { MATERIALES.length=0;   arr.forEach(function(x){MATERIALES.push(x);}); }
+
+// ============================================================
+// APP STATE
+// ============================================================
+var currentUser = null;
+function freshCalc() {
+  return {
+    estructura:'tips', longitud:'corto', forma:'cuadrada', esmalte:'liso',
+    decoracion:'ninguna', decoPorMano:true, decoPieza:'pieza_sencillo', decoPiezaCant:1,
+    adicionales:{relleno:false,remocion:false,reparacion:false,refuerzo:false,masaje:false},
+    materiales:{mat_cristal:0,mat_charm:0,mat_perla:0},
+    na:{estructura:false,longitud:false,forma:false,esmalte:false,decoracion:false}
+  };
+}
+var calc = freshCalc();
+
+// ============================================================
+// FORMAT
+// ============================================================
+function fmt(n) { return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(n||0); }
+function fmtDate(d) { return new Date(d).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+
+// ============================================================
+// LOGIN
+// ============================================================
+function selectRole(r) {
+  document.querySelectorAll('.role-btn').forEach(function(b,i){
+    b.classList.toggle('active', ['admin','manicurista','supervisor'][i] === r);
+  });
+  var defaults = {admin:{u:'admin',p:'1234'}, manicurista:{u:'maria',p:'1234'}, supervisor:{u:'ana',p:'1234'}};
+  if (defaults[r]) {
+    document.getElementById('loginUser').value = defaults[r].u;
+    document.getElementById('loginPass').value = defaults[r].p;
+  }
 }
 
-function buildPrecios() {
-  const p = loadPrecios();
-  const def = DEFAULT_PRECIOS;
+function doLogin() {
+  var u = document.getElementById('loginUser').value.trim();
+  var p = document.getElementById('loginPass').value.trim();
+  var users = loadUsers();
+  var found = null;
+  for (var i = 0; i < users.length; i++) {
+    if (users[i].username === u && users[i].pass === p) { found = users[i]; break; }
+  }
+  if (!found) { document.getElementById('loginError').style.display = 'block'; return; }
+  document.getElementById('loginError').style.display = 'none';
+  currentUser = found;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('headerUser').textContent = found.name;
+  buildNav();
+  showTab('calculadora');
+}
 
-  function sectionHTML(title, icon, items, defItems, keyName, extra) {
-    const rows = items.map(function(item, i) {
-      const defPrice = defItems[i] ? defItems[i].price : item.price;
-      const changed = item.price !== defPrice;
-      return '<div class="precio-row ' + (changed?'modified':'') + '">' +
-        '<div class="precio-label">' + item.name +
-        (item.desc ? '<div class="precio-sublabel">' + item.desc + '</div>' : '') +
-        '</div>' +
-        '<div class="precio-input-wrap">' +
-        '<span class="precio-symbol">$</span>' +
-        '<input class="precio-input ' + (changed?'changed':'') + '"' +
-        ' type="number" min="0" step="1"' +
-        ' value="' + item.price + '"' +
-        ' data-key="' + keyName + '"' +
-        ' data-id="' + item.id + '"' +
-        ' data-default="' + defPrice + '"' +
-        ' onchange="onPrecioChange(this)"' +
-        ' oninput="onPrecioChange(this)">' +
-        '<button class="btn-restore-one" title="Restaurar original"' +
-        ' onclick="restoreOne(this,' + defPrice + ')">&#8635;</button>' +
-        '</div></div>';
-    }).join('');
-    return '<div class="precios-section">' +
-      '<div class="precios-section-title"><span>' + icon + '</span>' + title + '</div>' +
-      '<div class="precios-grid">' + (extra||'') + rows + '</div></div>';
+function doLogout() {
+  currentUser = null;
+  calc = freshCalc();
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+// ============================================================
+// NAV
+// ============================================================
+function buildNav() {
+  var tabs = {
+    admin:       ['calculadora','ventas','corte','historial','usuarios','precios'],
+    manicurista: ['calculadora','historial'],
+    supervisor:  ['ventas','corte'],
+  };
+  var labels = {
+    calculadora:'&#128133; Cotizador', ventas:'&#9889; Ventas', corte:'&#128202; Corte',
+    historial:'&#128203; Historial',   usuarios:'&#128101; Usuarios', precios:'&#9881; Precios'
+  };
+  var list = tabs[currentUser.role] || tabs.manicurista;
+  document.getElementById('mainNav').innerHTML = list.map(function(id) {
+    return '<button class="nav-tab" data-tab="'+id+'" onclick="showTab(\''+id+'\')">'+labels[id]+'</button>';
+  }).join('');
+}
+
+function showTab(id) {
+  document.querySelectorAll('.nav-tab').forEach(function(b){b.classList.toggle('active', b.dataset.tab===id);});
+  var fns = {calculadora:buildCalculadora, ventas:buildVentas, corte:buildCorte,
+             historial:buildHistorial, usuarios:buildUsuarios, precios:buildPrecios};
+  var fn = fns[id] || buildCalculadora;
+  document.getElementById('mainContent').innerHTML = fn();
+}
+
+// ============================================================
+// THEME
+// ============================================================
+var isLight = false;
+function toggleDark() {
+  isLight = !isLight;
+  document.body.classList.toggle('light', isLight);
+  document.querySelector('.dark-toggle').textContent = isLight ? '&#127769;' : '&#127777;';
+}
+
+// ============================================================
+// CALC LOGIC
+// ============================================================
+function calcTotal() {
+  var na = calc.na || {};
+  var breakdown = [];
+  var total = 0;
+
+  if (!na.estructura) {
+    var est = ESTRUCTURAS.filter(function(e){return e.id===calc.estructura;})[0];
+    if (est) { total += est.price; breakdown.push({label:est.name, amount:est.price}); }
+  } else {
+    breakdown.push({label:'Estructura: N/A', amount:0});
   }
 
-  const ebChanged = p.esmalte_base !== def.esmalte_base;
-  const esmalteBaseRow = '<div class="precio-row ' + (ebChanged?'modified':'') + '">' +
-    '<div class="precio-label">Gel Polish Liso &mdash; precio base siempre incluido' +
-    '<div class="precio-sublabel">Base del servicio de esmalte</div></div>' +
-    '<div class="precio-input-wrap"><span class="precio-symbol">$</span>' +
-    '<input class="precio-input ' + (ebChanged?'changed':'') + '"' +
-    ' type="number" min="0" step="1" value="' + p.esmalte_base + '"' +
-    ' data-key="esmalte_base" data-id="base" data-default="' + def.esmalte_base + '"' +
-    ' onchange="onPrecioChange(this)" oninput="onPrecioChange(this)">' +
-    '<button class="btn-restore-one" onclick="restoreOne(this,' + def.esmalte_base + ')">&#8635;</button>' +
-    '</div></div>';
+  if (!na.longitud) {
+    var lon = LONGITUDES.filter(function(l){return l.id===calc.longitud;})[0];
+    if (lon && lon.price > 0) { total += lon.price; breakdown.push({label:'Longitud: '+lon.name, amount:lon.price}); }
+  } else {
+    breakdown.push({label:'Longitud: N/A', amount:0});
+  }
 
-  let modCount = 0;
-  if(p.esmalte_base !== def.esmalte_base) modCount++;
+  if (!na.forma) {
+    var frm = FORMAS.filter(function(f){return f.id===calc.forma;})[0];
+    if (frm && frm.price > 0) { total += frm.price; breakdown.push({label:'Forma: '+frm.name, amount:frm.price}); }
+  } else {
+    breakdown.push({label:'Forma: N/A', amount:0});
+  }
+
+  if (!na.esmalte) {
+    total += ESMALTE_BASE_VAL;
+    breakdown.push({label:'Gel Polish base', amount:ESMALTE_BASE_VAL});
+    var esm = ESMALTES.filter(function(e){return e.id===calc.esmalte;})[0];
+    if (esm && esm.price > 0) { total += esm.price; breakdown.push({label:'Acabado: '+esm.name, amount:esm.price}); }
+  } else {
+    breakdown.push({label:'Esmalte: N/A', amount:0});
+  }
+
+  if (!na.decoracion) {
+    if (calc.decoracion !== 'ninguna') {
+      var deco = DECORACIONES.filter(function(d){return d.id===calc.decoracion;})[0];
+      if (deco && deco.price > 0) {
+        if (calc.decoPorMano) {
+          total += deco.price;
+          breakdown.push({label:'Decoracion (mano): '+deco.name, amount:deco.price});
+        } else {
+          var pd = DECO_PIEZAS.filter(function(p){return p.id===calc.decoPieza;})[0];
+          if (pd) {
+            var sub = pd.price * calc.decoPiezaCant;
+            total += sub;
+            breakdown.push({label:'Decoracion x'+calc.decoPiezaCant+' unas: '+pd.name, amount:sub});
+          }
+        }
+      }
+    }
+  } else {
+    breakdown.push({label:'Decoracion: N/A', amount:0});
+  }
+
+  ADICIONALES.forEach(function(a) {
+    if (calc.adicionales[a.id]) { total += a.price; breakdown.push({label:a.name, amount:a.price}); }
+  });
+
+  MATERIALES.forEach(function(m) {
+    var q = calc.materiales[m.id] || 0;
+    if (q > 0) { var s = m.price*q; total += s; breakdown.push({label:m.name+' x'+q, amount:s}); }
+  });
+
+  if (total < 200) total = 200;
+  return {total:total, breakdown:breakdown};
+}
+
+function calcTime() {
+  var min = 70;
+  if (calc.longitud === 'largo') min += 15;
+  if (calc.longitud === 'xl')    min += 25;
+  if (calc.estructura === 'polygel' || calc.estructura === 'softgel') min += 15;
+  var decoItem = DECORACIONES.filter(function(d){return d.id===calc.decoracion;})[0];
+  if (decoItem && decoItem.price >= 200) min += 30;
+  else if (decoItem && decoItem.price >= 100) min += 20;
+  if (calc.adicionales.masaje)   min += 15;
+  if (calc.adicionales.remocion) min += 20;
+  var h = Math.floor(min/60), m = min%60;
+  return (h>0 ? h+'h ' : '') + m + 'min';
+}
+
+// ============================================================
+// CALC SETTERS
+// ============================================================
+function setCalc(key, val) {
+  if (key === 'decoPiezaCant') calc[key] = Math.min(10, Math.max(1, parseInt(val)||1));
+  else calc[key] = val;
+  refreshCalc();
+}
+function setDecoPorMano(v) { calc.decoPorMano = v; refreshCalc(); }
+function toggleNA(key) {
+  if (!calc.na) calc.na = {estructura:false,longitud:false,forma:false,esmalte:false,decoracion:false};
+  calc.na[key] = !calc.na[key];
+  refreshCalc();
+}
+function toggleAdicional(id) { calc.adicionales[id] = !calc.adicionales[id]; refreshCalc(); }
+function setMaterial(id, v)  { calc.materiales[id]  = Math.max(0, parseInt(v)||0); refreshCalc(); }
+function resetCalc()         { calc = freshCalc(); refreshCalc(); }
+function refreshCalc() {
+  var tab = document.querySelector('.nav-tab[data-tab="calculadora"]');
+  if (tab && tab.classList.contains('active')) {
+    document.getElementById('mainContent').innerHTML = buildCalculadora();
+  }
+}
+
+// ============================================================
+// BUILD CALCULATOR
+// ============================================================
+function buildCalculadora() {
+  var na = calc.na || {};
+  var ct = calcTotal();
+  var total = ct.total;
+  var breakdown = ct.breakdown;
+  var tiempo = calcTime();
+  var EBV = ESMALTE_BASE_VAL;
+  var warn200 = total === 200 ? '<div class="warning-msg">&#9888; Precio minimo aplicado: $200 MXN</div>' : '';
+
+  function naCard(key) {
+    var isNA = !!na[key];
+    return '<div class="chk-card na-card'+(isNA?' chk-selected na-active':'')+'" onclick="toggleNA(\''+key+'\')">'
+      +'<div class="chk-box na-chk">N/A</div>'
+      +'<div class="chk-body"><div class="chk-name">No Aplica</div>'
+      +'<div class="chk-desc">Excluir del precio</div>'
+      +'<div class="chk-price" style="color:'+(isNA?'var(--star-gold)':'var(--text-dim)')+'">$0.00</div>'
+      +'</div></div>';
+  }
+
+  function radioCard(key, item, isSelected, priceStr) {
+    if (na[key]) {
+      return '<div class="chk-card" style="opacity:0.3;pointer-events:none">'
+        +'<div class="chk-box">&#10003;</div>'
+        +'<div class="chk-body"><div class="chk-name">'+item.name+'</div>'
+        +'<div class="chk-price">'+priceStr+'</div></div></div>';
+    }
+    return '<div class="chk-card radio-style'+(isSelected?' chk-selected':'')+'" onclick="setCalc(\''+key+'\',\''+item.id+'\')">'
+      +'<div class="chk-box">&#10003;</div>'
+      +'<div class="chk-body"><div class="chk-name">'+item.name+'</div>'
+      +(item.desc?'<div class="chk-desc">'+item.desc+'</div>':'')
+      +'<div class="chk-price">'+priceStr+'</div></div></div>';
+  }
+
+  function extraChkCard(id, name, desc, price, checked) {
+    return '<div class="chk-card'+(checked?' chk-selected':'')+'" onclick="toggleAdicional(\''+id+'\')">'
+      +'<div class="chk-box">&#10003;</div>'
+      +'<div class="chk-body"><div class="chk-name">'+name+'</div>'
+      +(desc?'<div class="chk-desc">'+desc+'</div>':'')
+      +'<div class="chk-price">'+fmt(price)+'</div></div></div>';
+  }
+
+  var estRows = naCard('estructura');
+  ESTRUCTURAS.forEach(function(e) {
+    estRows += radioCard('estructura', e, calc.estructura===e.id, fmt(e.price));
+  });
+
+  var lonRows = naCard('longitud');
+  LONGITUDES.forEach(function(l) {
+    lonRows += radioCard('longitud', l, calc.longitud===l.id, l.price===0?'Base (sin extra)':'+'+fmt(l.price));
+  });
+
+  var frmRows = naCard('forma');
+  FORMAS.forEach(function(f) {
+    frmRows += radioCard('forma', f, calc.forma===f.id, f.price===0?'Sin extra':'+'+fmt(f.price));
+  });
+
+  var esmRows = naCard('esmalte');
+  ESMALTES.forEach(function(e) {
+    var sel = calc.esmalte === e.id;
+    var onclick = na.esmalte ? '' : (e.id==='liso' ? "onclick=\"setCalc('esmalte','liso')\"" : (sel ? "onclick=\"setCalc('esmalte','liso')\"" : "onclick=\"setCalc('esmalte','"+e.id+"')\"")); 
+    var disabled = na.esmalte ? ' style="opacity:0.3;pointer-events:none"' : '';
+    esmRows += '<div class="chk-card'+(e.id==='liso'?' radio-style':'')+(sel&&!na.esmalte?' chk-selected':'')+'"'+disabled+' '+onclick+'>'
+      +'<div class="chk-box">&#10003;</div>'
+      +'<div class="chk-body"><div class="chk-name">'+e.name+'</div>'
+      +(e.desc?'<div class="chk-desc">'+e.desc+'</div>':'')
+      +'<div class="chk-price">'+(e.price===0?'Incluido (base '+fmt(EBV)+')':'+'+fmt(e.price))+'</div>'
+      +'</div></div>';
+  });
+
+  var decoRows = naCard('decoracion');
+  DECORACIONES.forEach(function(d) {
+    var sel = calc.decoracion === d.id;
+    var onclick = na.decoracion ? '' : (d.id==='ninguna' ? "onclick=\"setCalc('decoracion','ninguna')\"" : (sel ? "onclick=\"setCalc('decoracion','ninguna')\"" : "onclick=\"setCalc('decoracion','"+d.id+"')\"")); 
+    var disabled = na.decoracion ? ' style="opacity:0.3;pointer-events:none"' : '';
+    decoRows += '<div class="chk-card'+(d.id==='ninguna'?' radio-style':'')+(sel&&!na.decoracion?' chk-selected':'')+'"'+disabled+' '+onclick+'>'
+      +'<div class="chk-box">&#10003;</div>'
+      +'<div class="chk-body"><div class="chk-name">'+d.name+'</div>'
+      +(d.desc?'<div class="chk-desc">'+d.desc+'</div>':'')
+      +'<div class="chk-price">'+(d.price===0?'Sin extra':'+'+fmt(d.price))+'</div>'
+      +'</div></div>';
+  });
+
+  var decoExtra = '';
+  if (calc.decoracion !== 'ninguna' && !na.decoracion) {
+    var manoSel = calc.decoPorMano;
+    var piezaRows = '';
+    if (!manoSel) {
+      DECO_PIEZAS.forEach(function(p) {
+        piezaRows += radioCard('decoPieza', p, calc.decoPieza===p.id, fmt(p.price)+'/una');
+      });
+    }
+    decoExtra = '<div style="margin-top:16px">'
+      +'<div class="section-label">&#128073; Como cobrar la decoracion?</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:14px">'
+        +'<div class="chk-card radio-style'+(manoSel?' chk-selected':'')+'" onclick="setDecoPorMano(true)" style="flex:1">'
+          +'<div class="chk-box">&#10003;</div>'
+          +'<div class="chk-body"><div class="chk-name">Por mano completa</div><div class="chk-price">Precio fijo</div></div>'
+        +'</div>'
+        +'<div class="chk-card radio-style'+(!manoSel?' chk-selected':'')+'" onclick="setDecoPorMano(false)" style="flex:1">'
+          +'<div class="chk-box">&#10003;</div>'
+          +'<div class="chk-body"><div class="chk-name">Por una individual</div><div class="chk-price">Precio x una</div></div>'
+        +'</div>'
+      +'</div>'
+      +(!manoSel
+        ? '<div class="section-label">Tipo por una</div>'
+          +'<div class="chk-grid" style="margin-bottom:12px">'+piezaRows+'</div>'
+          +'<div style="display:flex;align-items:center;gap:12px">'
+            +'<label style="font-size:0.78rem;color:var(--text-dim);font-family:Orbitron,monospace">CANTIDAD:</label>'
+            +'<input class="qty-input" type="number" min="1" max="10" value="'+calc.decoPiezaCant+'" onchange="setCalc(\'decoPiezaCant\',parseInt(this.value)||1)">'
+            +'<span style="font-size:0.72rem;color:var(--text-dim)">max 10</span>'
+          +'</div>'
+        : '')
+      +'</div>';
+  }
+
+  var adRows = '';
+  ADICIONALES.forEach(function(a) {
+    adRows += extraChkCard(a.id, a.name, a.desc||'', a.price, !!calc.adicionales[a.id]);
+  });
+
+  var matRows = '';
+  MATERIALES.forEach(function(m) {
+    var q = calc.materiales[m.id] || 0;
+    matRows += '<div class="chk-card'+(q>0?' chk-selected':'')+'" style="cursor:default">'
+      +'<div class="chk-box" style="'+(q>0?'background:var(--saber-glow);border-color:var(--saber-glow);color:#fff':'')+'">&#10003;</div>'
+      +'<div class="chk-body"><div class="chk-name">'+m.name+'</div>'
+        +'<div class="chk-desc">Cargo por pieza</div>'
+        +'<div class="chk-price">'+fmt(m.price)+' / pieza</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'
+        +'<input class="qty-input" type="number" min="0" max="100" value="'+q+'" onchange="setMaterial(\''+m.id+'\',this.value)" style="width:60px">'
+        +'<span style="font-size:0.7rem;color:var(--text-dim)">pzs</span>'
+      +'</div>'
+    +'</div>';
+  });
+
+  var bkRows = '';
+  breakdown.forEach(function(b) {
+    if (b.amount !== 0 || b.label.indexOf('N/A') >= 0) {
+      bkRows += '<li'+(b.label.indexOf('N/A')>=0?' style="opacity:0.4"':'')+'>'+
+        '<span>'+b.label+'</span><span>'+(b.amount===0?'N/A':fmt(b.amount))+'</span></li>';
+    }
+  });
+  bkRows += '<li><span>TOTAL</span><span>'+fmt(total)+'</span></li>';
+
+  var saleBtn = (currentUser && currentUser.role !== 'supervisor')
+    ? '<button class="btn-sale" onclick="registerSale()">&#128176; VENTA</button>' : '';
+
+  return '<div id="calcGrid" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">'
+    +'<div>'
+    +'<div class="card"><div class="card-title"><span class="icon">&#128302;</span>TIPO DE ESTRUCTURA</div>'
+    +'<div class="na-hint">Selecciona N/A si no aplica esta seccion</div>'
+    +'<div class="chk-grid" style="margin-top:8px">'+estRows+'</div></div>'
+
+    +'<div class="card"><div class="card-title"><span class="icon">&#128207;</span>LONGITUD</div>'
+    +'<div class="na-hint">Selecciona N/A si no aplica</div>'
+    +'<div class="chk-grid" style="margin-top:8px">'+lonRows+'</div></div>'
+
+    +'<div class="card"><div class="card-title"><span class="icon">&#128142;</span>FORMA</div>'
+    +'<div class="na-hint">Selecciona N/A si no aplica</div>'
+    +'<div class="chk-grid" style="margin-top:8px">'+frmRows+'</div></div>'
+
+    +'<div class="card"><div class="card-title"><span class="icon">&#10024;</span>ESMALTE Y ACABADO</div>'
+    +'<div class="deselect-hint">&#9432; Base Gel Polish: '+fmt(EBV)+' siempre incluida. Toca efecto para agregar/quitar.</div>'
+    +'<div class="chk-grid" style="margin-top:10px">'+esmRows+'</div></div>'
+
+    +'<div class="card"><div class="card-title"><span class="icon">&#127912;</span>DECORACION</div>'
+    +'<div class="deselect-hint">&#9432; Toca de nuevo para deseleccionar. N/A excluye del precio.</div>'
+    +'<div class="chk-grid-wide" style="margin-top:10px">'+decoRows+'</div>'
+    +decoExtra+'</div>'
+
+    +'<div class="card"><div class="card-title"><span class="icon">&#11088;</span>ADICIONALES Y MANTENIMIENTO</div>'
+    +'<div class="deselect-hint">&#9432; Toca para agregar o quitar</div>'
+    +'<div class="chk-grid-2" style="margin-top:10px">'+adRows+'</div></div>'
+
+    +'<div class="card"><div class="card-title"><span class="icon">&#128141;</span>CARGO DE MATERIAL EXTRA</div>'
+    +'<div class="deselect-hint">&#9432; Captura la cantidad de piezas</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">'+matRows+'</div></div>'
+    +'</div>'
+
+    +'<div><div class="total-box">'
+      +'<div class="total-label">ESTIMADO TOTAL</div>'
+      +'<div class="total-amount">'+fmt(total)+'</div>'
+      +'<div style="margin-top:4px;font-size:0.68rem;color:var(--text-dim);font-family:Orbitron,monospace;letter-spacing:1px">MXN &mdash; STAR SHINE NAILS</div>'
+      +'<div style="margin:14px 0 8px;height:1px;background:linear-gradient(90deg,transparent,rgba(196,96,126,0.4),transparent)"></div>'
+      +'<ul class="breakdown">'+bkRows+'</ul>'
+      +'<div class="time-badge">&#9201; '+tiempo+' aprox.</div>'
+      +warn200
+      +'<div class="total-actions">'
+        +'<button class="btn-reset" onclick="resetCalc()">&#8635; RESET</button>'
+        +'<button class="btn-pdf" onclick="downloadPDF()">&#128196; PDF</button>'
+        +saleBtn
+      +'</div>'
+    +'</div></div>'
+    +'</div>';
+}
+
+// ============================================================
+// PDF
+// ============================================================
+function downloadPDF() {
+  var ct = calcTotal();
+  var total = ct.total;
+  var breakdown = ct.breakdown;
+  var date  = new Date().toLocaleString('es-MX');
+  var tiempo = calcTime();
+  var logoEl = document.querySelector('#loginScreen img');
+  var logoSrc = logoEl ? logoEl.src : '';
+  var logoHTML = logoSrc ? '<img src="'+logoSrc+'" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid rgba(196,96,126,0.5);box-shadow:0 0 20px rgba(196,96,126,0.4)">' : '';
+  var bkRows = '';
+  breakdown.forEach(function(b) {
+    bkRows += '<tr><td>'+b.label+'</td><td>'+(b.amount===0?'N/A':fmt(b.amount))+'</td></tr>';
+  });
+  bkRows += '<tr class="total-row"><td>TOTAL</td><td>'+fmt(total)+'</td></tr>';
+  var w = window.open('','_blank');
+  w.document.write(
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cotizacion Star Shine Nails</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Exo+2:wght@300;400;500&display=swap" rel="stylesheet">'
+    +'<style>'
+    +'*{margin:0;padding:0;box-sizing:border-box}'
+    +'body{font-family:"Exo 2",sans-serif;background:#05010a;color:#e8d8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}'
+    +'.page{max-width:480px;width:100%;background:rgba(13,6,32,0.97);border:1px solid rgba(196,96,126,0.35);border-radius:20px;padding:36px;box-shadow:0 0 60px rgba(196,96,126,0.15)}'
+    +'.header{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(196,96,126,0.2)}'
+    +'.logo-wrap{display:flex;justify-content:center;margin-bottom:14px}'
+    +'h1{font-family:Orbitron,monospace;font-size:1.2rem;color:#ff6b9d;letter-spacing:1px}'
+    +'.tagline{font-size:0.72rem;color:#8b7099;letter-spacing:2px;text-transform:uppercase;margin-top:4px}'
+    +'.meta{font-size:0.75rem;color:#8b7099;margin-top:6px}'
+    +'.saber{height:1px;background:linear-gradient(90deg,transparent,#c4607e,#ffd700,#c4607e,transparent);margin:20px 0;box-shadow:0 0 6px rgba(196,96,126,0.4)}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'td{padding:9px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.87rem}'
+    +'td:last-child{text-align:right;font-family:Orbitron,monospace;font-weight:600;color:#d4a857}'
+    +'.total-row td{font-size:1rem;font-weight:700;color:#ff6b9d;border-top:1px solid rgba(196,96,126,0.3);border-bottom:none;padding-top:14px}'
+    +'.total-row td:last-child{color:#ff6b9d}'
+    +'.time{display:inline-flex;align-items:center;gap:6px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:6px;padding:5px 10px;font-size:0.72rem;color:#4fc3f7;font-family:Orbitron,monospace;margin-top:12px}'
+    +'.footer{font-size:0.72rem;color:#8b7099;margin-top:16px;padding-top:12px;border-top:1px solid rgba(196,96,126,0.15);display:flex;justify-content:space-between}'
+    +'.print-btn{display:block;width:100%;margin-top:20px;padding:12px;background:linear-gradient(135deg,#c4607e,#7b3f6e);color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:Orbitron,monospace;font-size:0.8rem;letter-spacing:1px;font-weight:700}'
+    +'@media print{.print-btn{display:none}}'
+    +'</style></head><body><div class="page">'
+    +'<div class="header"><div class="logo-wrap">'+logoHTML+'</div>'
+    +'<h1>&#9733; STAR SHINE NAILS</h1>'
+    +'<div class="tagline">Beauty is your destiny</div>'
+    +'<div class="meta">Cotizacion &mdash; '+date+'</div>'
+    +(currentUser ? '<div class="meta">Nail Artist: '+currentUser.name+'</div>' : '')
+    +'</div>'
+    +'<div class="saber"></div>'
+    +'<table>'+bkRows+'</table>'
+    +'<div class="time">&#9201; Tiempo estimado: '+tiempo+'</div>'
+    +'<div class="footer"><span>&#10022; Valido el dia de hoy</span><span>Star Shine Nails</span></div>'
+    +'<button class="print-btn" onclick="window.print()">&#128196; IMPRIMIR / GUARDAR PDF</button>'
+    +'</div></body></html>'
+  );
+  w.document.close();
+  var hist = loadHistory();
+  hist.unshift({id:Date.now(), total:total, breakdown:breakdown, date:new Date().toISOString(), user:currentUser.name, tiempo:tiempo});
+  if (hist.length > 5) hist.pop();
+  saveHistory(hist);
+}
+
+// ============================================================
+// REGISTER SALE
+// ============================================================
+function registerSale() {
+  var total = calcTotal().total;
+  openModal('<h2 class="modal-title">&#9889; REGISTRAR VENTA</h2>'
+    +'<div class="form-group"><label>Cliente</label><input type="text" id="saleClient" placeholder="Nombre del cliente"></div>'
+    +'<div class="form-group"><label>Metodo de pago</label>'
+      +'<select id="saleMethod">'
+        +'<option value="efectivo">&#128181; Efectivo</option>'
+        +'<option value="transferencia">&#128241; Transferencia</option>'
+        +'<option value="tarjeta">&#128179; Tarjeta</option>'
+      +'</select></div>'
+    +'<div style="background:rgba(196,96,126,0.08);border:1px solid rgba(196,96,126,0.2);border-radius:12px;padding:16px;margin-bottom:16px">'
+      +'<div style="font-size:0.68rem;color:var(--text-dim);font-family:Orbitron,monospace;letter-spacing:1px">TOTAL A COBRAR</div>'
+      +'<div style="font-family:Orbitron,monospace;font-size:1.8rem;color:var(--saber-glow);font-weight:700">'+fmt(total)+'</div>'
+    +'</div>'
+    +'<div class="modal-actions">'
+      +'<button class="btn-cancel" onclick="closeModal()">Cancelar</button>'
+      +'<button class="btn-save" onclick="confirmSale('+total+')">&#10003; CONFIRMAR</button>'
+    +'</div>');
+}
+
+function confirmSale(total) {
+  var client = document.getElementById('saleClient').value || 'Cliente';
+  var method = document.getElementById('saleMethod').value;
+  var breakdown = calcTotal().breakdown;
+  var sales = loadSales();
+  sales.push({id:Date.now(), client:client, method:method, total:total, breakdown:breakdown, date:new Date().toISOString(), user:currentUser.name});
+  saveSales(sales);
+  closeModal();
+  showNotif('&#10003; Venta registrada correctamente');
+}
+
+// ============================================================
+// VENTAS
+// ============================================================
+function buildVentas() {
+  var sales = loadSales();
+  var today = new Date().toDateString();
+  var totalDay = 0, totalAll = 0;
+  sales.forEach(function(s) {
+    totalAll += s.total;
+    if (new Date(s.date).toDateString() === today) totalDay += s.total;
+  });
+  var ml = {efectivo:'&#128181; Efectivo', transferencia:'&#128241; Transferencia', tarjeta:'&#128179; Tarjeta'};
+  var rows = '';
+  if (sales.length === 0) {
+    rows = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-dim)">Sin ventas registradas</td></tr>';
+  } else {
+    var rev = sales.slice().reverse();
+    rev.forEach(function(s) {
+      rows += '<tr><td>'+fmtDate(s.date)+'</td><td>'+s.client+'</td>'
+        +'<td><span class="badge badge-green">'+(ml[s.method]||s.method)+'</span></td>'
+        +'<td style="font-family:Orbitron,monospace;color:var(--saber-glow);font-weight:700">'+fmt(s.total)+'</td>'
+        +'<td>'+s.user+'</td></tr>';
+    });
+  }
+  var clearBtn = currentUser.role==='admin' ? '<div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearSales()">&#128465; Limpiar ventas</button></div>' : '';
+  return '<div class="stats-grid">'
+    +'<div class="stat-card"><div class="stat-value">'+fmt(totalDay)+'</div><div class="stat-label">Ventas Hoy</div></div>'
+    +'<div class="stat-card"><div class="stat-value">'+fmt(totalAll)+'</div><div class="stat-label">Total Acumulado</div></div>'
+    +'<div class="stat-card"><div class="stat-value">'+sales.length+'</div><div class="stat-label">Servicios</div></div>'
+    +'<div class="stat-card"><div class="stat-value">'+(sales.length?fmt(totalAll/sales.length):'$0')+'</div><div class="stat-label">Ticket Promedio</div></div>'
+    +'</div>'
+    +'<div class="card"><div class="card-title"><span class="icon">&#9889;</span>REGISTRO DE VENTAS</div>'
+    +'<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Metodo</th><th>Total</th><th>Nail Artist</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'+clearBtn+'</div>';
+}
+function clearSales() { if(confirm('Limpiar todas las ventas?')) { saveSales([]); showTab('ventas'); } }
+
+// ============================================================
+// CORTE
+// ============================================================
+function buildCorte() {
+  var today = new Date().toISOString().split('T')[0];
+  return '<div class="card"><div class="card-title"><span class="icon">&#128202;</span>CORTE DEL DIA</div>'
+    +'<div class="cut-period">'
+      +'<input type="date" id="cutFrom" value="'+today+'">'
+      +'<span style="color:var(--text-dim)">&mdash;</span>'
+      +'<input type="date" id="cutTo" value="'+today+'">'
+      +'<button class="btn-gen-cut" onclick="generateCut()">GENERAR</button>'
+    +'</div><div id="cutResult"></div></div>';
+}
+
+function generateCut() {
+  var from = new Date(document.getElementById('cutFrom').value);
+  var to   = new Date(document.getElementById('cutTo').value);
+  to.setHours(23,59,59);
+  var sales = loadSales().filter(function(s){ var d=new Date(s.date); return d>=from && d<=to; });
+  var total = 0;
+  var byMethod = {}, byUser = {};
+  sales.forEach(function(s) {
+    total += s.total;
+    byMethod[s.method] = (byMethod[s.method]||0) + s.total;
+    byUser[s.user]     = (byUser[s.user]||0)     + s.total;
+  });
+  var ml = {efectivo:'&#128181; Efectivo', transferencia:'&#128241; Transferencia', tarjeta:'&#128179; Tarjeta'};
+  var mRows = '', uRows = '';
+  Object.keys(byMethod).forEach(function(m) {
+    mRows += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem">'
+      +'<span>'+(ml[m]||m)+'</span><span style="font-family:Orbitron,monospace;color:var(--saber-glow)">'+fmt(byMethod[m])+'</span></div>';
+  });
+  Object.keys(byUser).forEach(function(u) {
+    uRows += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(196,96,126,0.08);font-size:0.84rem">'
+      +'<span>&#128133; '+u+'</span><span style="font-family:Orbitron,monospace;color:var(--saber-glow)">'+fmt(byUser[u])+'</span></div>';
+  });
+  document.getElementById('cutResult').innerHTML =
+    '<div class="cut-summary">'
+      +'<div class="cut-stat"><div class="cut-stat-value">'+fmt(total)+'</div><div class="cut-stat-label">Total Periodo</div></div>'
+      +'<div class="cut-stat"><div class="cut-stat-value">'+sales.length+'</div><div class="cut-stat-label">Servicios</div></div>'
+      +'<div class="cut-stat"><div class="cut-stat-value">'+(sales.length?fmt(total/sales.length):'$0')+'</div><div class="cut-stat-label">Ticket Prom.</div></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
+      +'<div><div class="section-label">Por Metodo</div>'+(mRows||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>')+'</div>'
+      +'<div><div class="section-label">Por Nail Artist</div>'+(uRows||'<p style="color:var(--text-dim);font-size:0.82rem">Sin datos</p>')+'</div>'
+    +'</div>'
+    +'<div style="margin-top:16px"><button class="btn-pdf" onclick="printCut()">&#128424; IMPRIMIR</button></div>';
+}
+
+function printCut() {
+  var from = document.getElementById('cutFrom').value;
+  var to   = document.getElementById('cutTo').value;
+  var sales = loadSales().filter(function(s){var d=new Date(s.date);return d>=new Date(from)&&d<=new Date(to+'T23:59:59');});
+  var total = sales.reduce(function(a,s){return a+s.total;},0);
+  var w = window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Corte</title>'
+    +'<style>body{font-family:sans-serif;margin:40px;max-width:400px}h1{color:#c4607e}.total{font-size:1.4rem;font-weight:700;color:#c4607e}</style>'
+    +'</head><body><h1>&#9733; Star Shine Nails &mdash; Corte</h1>'
+    +'<p>'+from+' al '+to+'</p><p>Servicios: <strong>'+sales.length+'</strong></p>'
+    +'<p class="total">Total: '+fmt(total)+'</p><br><button onclick="window.print()">Imprimir</button></body></html>');
+  w.document.close();
+}
+
+// ============================================================
+// HISTORIAL
+// ============================================================
+function buildHistorial() {
+  var h = loadHistory();
+  var content = '';
+  if (h.length === 0) {
+    content = '<p style="color:var(--text-dim);text-align:center;padding:32px;font-family:Orbitron,monospace;font-size:0.8rem">SIN COTIZACIONES GUARDADAS</p>';
+  } else {
+    var items = '';
+    h.forEach(function(q) {
+      items += '<div class="history-item">'
+        +'<div><div class="history-date">&#9201; '+fmtDate(q.date)+' &middot; '+q.user+'</div></div>'
+        +'<div class="history-total">'+fmt(q.total)+'</div>'
+        +'</div>';
+    });
+    content = '<div class="history-list">'+items+'</div>';
+  }
+  return '<div class="card"><div class="card-title"><span class="icon">&#128203;</span>ULTIMAS 5 COTIZACIONES</div>'
+    +content
+    +'<div style="margin-top:16px"><button class="btn-sm-outline" onclick="clearHistory()">&#128465; Limpiar</button></div></div>';
+}
+function clearHistory() { if(confirm('Limpiar historial?')) { saveHistory([]); showTab('historial'); } }
+
+// ============================================================
+// USUARIOS
+// ============================================================
+function buildUsuarios() {
+  var users = loadUsers();
+  var rb = {admin:'&#128081; ADMIN', manicurista:'&#128133; NAIL ARTIST', supervisor:'&#128202; SUPERVISOR'};
+  var cards = '';
+  users.forEach(function(u) {
+    var delBtn = u.id !== 1 ? '<button class="btn-delete" onclick="deleteUser('+u.id+')">&#10005; Eliminar</button>' : '';
+    cards += '<div class="user-card">'
+      +'<div class="user-avatar">'+u.name.charAt(0)+'</div>'
+      +'<div class="user-name">'+u.name+'</div>'
+      +'<div class="user-username">@'+u.username+'</div>'
+      +'<div><span class="user-role-badge role-'+u.role+'">'+(rb[u.role]||u.role)+'</span></div>'
+      +'<div class="user-actions">'
+        +'<button class="btn-edit" onclick="editUser('+u.id+')">&#9998; Editar</button>'+delBtn
+      +'</div></div>';
+  });
+  return '<div class="card">'
+    +'<div class="card-title" style="justify-content:space-between">'
+      +'<span><span class="icon">&#128101;</span>GESTION DE USUARIOS</span>'
+      +'<button class="btn-save" style="padding:8px 16px;font-size:0.72rem" onclick="addUser()">+ NUEVO</button>'
+    +'</div><div class="users-grid">'+cards+'</div></div>';
+}
+
+function addUser() {
+  openModal('<h2 class="modal-title">&#128100; NUEVO USUARIO</h2>'
+    +'<div class="form-group"><label>Nombre</label><input type="text" id="uName" placeholder="Nombre completo"></div>'
+    +'<div class="form-group"><label>Usuario</label><input type="text" id="uUser" placeholder="usuario"></div>'
+    +'<div class="form-group"><label>Contrasena</label><input type="password" id="uPass" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;"></div>'
+    +'<div class="form-group"><label>Rol</label><select id="uRole">'
+      +'<option value="manicurista">&#128133; Nail Artist</option>'
+      +'<option value="supervisor">&#128202; Supervisor</option>'
+      +'<option value="admin">&#128081; Admin</option>'
+    +'</select></div>'
+    +'<div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-save" onclick="saveNewUser()">GUARDAR</button></div>');
+}
+
+function saveNewUser() {
+  var name = document.getElementById('uName').value.trim();
+  var uname= document.getElementById('uUser').value.trim();
+  var pass = document.getElementById('uPass').value.trim();
+  var role = document.getElementById('uRole').value;
+  if (!name||!uname||!pass) { alert('Completa todos los campos'); return; }
+  var users = loadUsers();
+  users.push({id:Date.now(), name:name, username:uname, pass:pass, role:role});
+  saveUsers(users);
+  closeModal();
+  showTab('usuarios');
+}
+
+function editUser(id) {
+  var users = loadUsers();
+  var u = null;
+  for (var i=0; i<users.length; i++) { if(users[i].id===id){u=users[i];break;} }
+  if (!u) return;
+  openModal('<h2 class="modal-title">&#9998; EDITAR USUARIO</h2>'
+    +'<div class="form-group"><label>Nombre</label><input type="text" id="eeName" value="'+u.name+'"></div>'
+    +'<div class="form-group"><label>Usuario</label><input type="text" id="eeUser" value="'+u.username+'"></div>'
+    +'<div class="form-group"><label>Contrasena</label><input type="password" id="eePass" value="'+u.pass+'"></div>'
+    +'<div class="form-group"><label>Rol</label><select id="eeRole">'
+      +'<option value="manicurista"'+(u.role==='manicurista'?' selected':'')+'>&#128133; Nail Artist</option>'
+      +'<option value="supervisor"' +(u.role==='supervisor' ?' selected':'')+'>&#128202; Supervisor</option>'
+      +'<option value="admin"'      +(u.role==='admin'      ?' selected':'')+'>&#128081; Admin</option>'
+    +'</select></div>'
+    +'<div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-save" onclick="updateUser('+id+')">GUARDAR</button></div>');
+}
+
+function updateUser(id) {
+  var users = loadUsers();
+  for (var i=0; i<users.length; i++) {
+    if (users[i].id === id) {
+      users[i].name     = document.getElementById('eeName').value.trim();
+      users[i].username = document.getElementById('eeUser').value.trim();
+      users[i].pass     = document.getElementById('eePass').value.trim();
+      users[i].role     = document.getElementById('eeRole').value;
+      break;
+    }
+  }
+  saveUsers(users);
+  closeModal();
+  showTab('usuarios');
+}
+
+function deleteUser(id) {
+  if (!confirm('Eliminar usuario?')) return;
+  saveUsers(loadUsers().filter(function(u){ return u.id !== id; }));
+  showTab('usuarios');
+}
+
+// ============================================================
+// PRECIOS ADMIN
+// ============================================================
+function buildPrecios() {
+  var p   = loadPrecios();
+  var def = DEFAULT_PRECIOS;
+
+  function sectionHTML(title, icon, items, defItems, keyName, extra) {
+    var rowsHTML = '';
+    items.forEach(function(item, i) {
+      var defPrice = defItems[i] ? defItems[i].price : item.price;
+      var changed  = item.price !== defPrice;
+      rowsHTML += '<div class="precio-row'+(changed?' modified':'')+'">'
+        +'<div class="precio-label">'+item.name
+        +(item.desc?'<div class="precio-sublabel">'+item.desc+'</div>':'')
+        +'</div>'
+        +'<div class="precio-input-wrap">'
+          +'<span class="precio-symbol">$</span>'
+          +'<input class="precio-input'+(changed?' changed':'')+'"'
+            +' type="number" min="0" step="1" value="'+item.price+'"'
+            +' data-key="'+keyName+'" data-id="'+item.id+'" data-default="'+defPrice+'"'
+            +' onchange="onPrecioChange(this)" oninput="onPrecioChange(this)">'
+          +'<button class="btn-restore-one" title="Restaurar" onclick="restoreOne(this,'+defPrice+')">&#8635;</button>'
+        +'</div></div>';
+    });
+    return '<div class="precios-section">'
+      +'<div class="precios-section-title"><span>'+icon+'</span>'+title+'</div>'
+      +'<div class="precios-grid">'+(extra||'')+rowsHTML+'</div></div>';
+  }
+
+  var ebChanged = p.esmalte_base !== def.esmalte_base;
+  var esmalteBaseRow = '<div class="precio-row'+(ebChanged?' modified':'')+'">'
+    +'<div class="precio-label">Gel Polish Liso &mdash; precio base siempre incluido'
+    +'<div class="precio-sublabel">Base del servicio de esmalte</div></div>'
+    +'<div class="precio-input-wrap"><span class="precio-symbol">$</span>'
+    +'<input class="precio-input'+(ebChanged?' changed':'')+'"'
+      +' type="number" min="0" step="1" value="'+p.esmalte_base+'"'
+      +' data-key="esmalte_base" data-id="base" data-default="'+def.esmalte_base+'"'
+      +' onchange="onPrecioChange(this)" oninput="onPrecioChange(this)">'
+    +'<button class="btn-restore-one" onclick="restoreOne(this,'+def.esmalte_base+')">&#8635;</button>'
+    +'</div></div>';
+
+  var modCount = 0;
+  if (p.esmalte_base !== def.esmalte_base) modCount++;
   ['estructuras','longitudes','formas','esmaltes','decoraciones','deco_piezas','adicionales','materiales'].forEach(function(k) {
     p[k].forEach(function(item,i){ if(item.price !== def[k][i].price) modCount++; });
   });
 
-  return '<div class="card">' +
-    '<div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">' +
-    '<span><span class="icon">&#9881;</span>CONFIGURACION DE PRECIOS</span>' +
-    (modCount > 0 ? '<span class="precios-badge">&#9889; ' + modCount + ' precio' + (modCount>1?'s':'') + ' modificado' + (modCount>1?'s':'') + '</span>' : '') +
-    '</div>' +
-    '<p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:20px">' +
-    'Edita cualquier precio. Los campos en <span style="color:var(--star-gold)">dorado</span> tienen valor modificado. ' +
-    'El boton <strong style="color:var(--saber-glow)">&#8635;</strong> restaura ese precio al original. Guarda al finalizar.' +
-    '</p>' +
-    sectionHTML('TIPO DE ESTRUCTURA', '&#128302;', p.estructuras, def.estructuras, 'estructuras') +
-    sectionHTML('LONGITUD (INCREMENTO)', '&#128207;', p.longitudes, def.longitudes, 'longitudes') +
-    sectionHTML('FORMA (INCREMENTO)', '&#128142;', p.formas, def.formas, 'formas') +
-    sectionHTML('ESMALTE Y ACABADO', '&#10024;', p.esmaltes, def.esmaltes, 'esmaltes', esmalteBaseRow) +
-    sectionHTML('DECORACION POR MANO COMPLETA', '&#127912;', p.decoraciones.filter(function(d){return d.id!=='ninguna';}), def.decoraciones.filter(function(d){return d.id!=='ninguna';}), 'decoraciones') +
-    sectionHTML('DECORACION POR UNA INDIVIDUAL', '&#128396;', p.deco_piezas, def.deco_piezas, 'deco_piezas') +
-    sectionHTML('ADICIONALES Y MANTENIMIENTO', '&#11088;', p.adicionales, def.adicionales, 'adicionales') +
-    sectionHTML('CARGO DE MATERIAL EXTRA', '&#128141;', p.materiales, def.materiales, 'materiales') +
-    '<div class="precios-actions">' +
-    '<button class="btn-save-precios" onclick="savePreciosUI()">&#128190; GUARDAR CAMBIOS</button>' +
-    '<button class="btn-restore-all" onclick="restoreAllPrecios()">&#8635; RESTAURAR TODO</button>' +
-    '<span class="save-status" id="saveStatus">&#10003; GUARDADO</span>' +
-    '</div></div>';
+  return '<div class="card">'
+    +'<div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">'
+      +'<span><span class="icon">&#9881;</span>CONFIGURACION DE PRECIOS</span>'
+      +(modCount>0?'<span class="precios-badge">&#9889; '+modCount+' precio'+(modCount>1?'s':'')+' modificado'+(modCount>1?'s':'')+'</span>':'')
+    +'</div>'
+    +'<p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:20px">Edita el precio y presiona GUARDAR CAMBIOS. El boton &#8635; restaura ese campo al valor original.</p>'
+    +sectionHTML('TIPO DE ESTRUCTURA','&#128302;',p.estructuras,def.estructuras,'estructuras')
+    +sectionHTML('LONGITUD (INCREMENTO)','&#128207;',p.longitudes,def.longitudes,'longitudes')
+    +sectionHTML('FORMA (INCREMENTO)','&#128142;',p.formas,def.formas,'formas')
+    +sectionHTML('ESMALTE Y ACABADO','&#10024;',p.esmaltes,def.esmaltes,'esmaltes',esmalteBaseRow)
+    +sectionHTML('DECORACION POR MANO COMPLETA','&#127912;',p.decoraciones,def.decoraciones,'decoraciones')
+    +sectionHTML('DECORACION POR UNA INDIVIDUAL','&#128396;',p.deco_piezas,def.deco_piezas,'deco_piezas')
+    +sectionHTML('ADICIONALES Y MANTENIMIENTO','&#11088;',p.adicionales,def.adicionales,'adicionales')
+    +sectionHTML('CARGO DE MATERIAL EXTRA','&#128141;',p.materiales,def.materiales,'materiales')
+    +'<div class="precios-actions">'
+      +'<button class="btn-save-precios" onclick="savePreciosUI()">&#128190; GUARDAR CAMBIOS</button>'
+      +'<button class="btn-restore-all" onclick="restoreAllPrecios()">&#8635; RESTAURAR TODO</button>'
+      +'<span class="save-status" id="saveStatus">&#10003; GUARDADO</span>'
+    +'</div></div>';
 }
 
 function onPrecioChange(input) {
-  const val = parseFloat(input.value) || 0;
-  const defVal = parseFloat(input.dataset.default) || 0;
-  const changed = val !== defVal;
+  var val    = parseFloat(input.value) || 0;
+  var defVal = parseFloat(input.getAttribute('data-default')) || 0;
+  var changed = val !== defVal;
   input.classList.toggle('changed', changed);
-  const row = input.closest('.precio-row');
-  if(row) row.classList.toggle('modified', changed);
+  var row = input.closest('.precio-row');
+  if (row) row.classList.toggle('modified', changed);
 }
 
 function restoreOne(btn, defVal) {
-  const input = btn.closest('.precio-row').querySelector('.precio-input');
+  var row   = btn.closest('.precio-row');
+  var input = row.querySelector('.precio-input');
   input.value = defVal;
   input.classList.remove('changed');
-  btn.closest('.precio-row').classList.remove('modified');
+  row.classList.remove('modified');
 }
 
 function restoreAllPrecios() {
-  if(!confirm('Restaurar TODOS los precios a sus valores originales?')) return;
+  if (!confirm('Restaurar TODOS los precios a sus valores originales?')) return;
   localStorage.removeItem(PRECIOS_KEY);
   applyPrecios();
   showTab('precios');
@@ -1723,31 +1706,64 @@ function restoreAllPrecios() {
 }
 
 function savePreciosUI() {
-  const p = loadPrecios();
-  document.querySelectorAll('.precio-input').forEach(function(input) {
-    const key = input.dataset.key;
-    const id  = input.dataset.id;
-    const val = Math.max(0, parseFloat(input.value) || 0);
-    if(key === 'esmalte_base') {
-      p.esmalte_base = val;
-    } else if(p[key]) {
-      const item = p[key].find(function(x){ return x.id === id; });
-      if(item) item.price = val;
+  var newP = JSON.parse(JSON.stringify(DEFAULT_PRECIOS));
+  var inputs = document.querySelectorAll('.precio-input');
+  var changed = 0;
+  inputs.forEach(function(input) {
+    var key = input.getAttribute('data-key');
+    var id  = input.getAttribute('data-id');
+    var val = Math.max(0, parseFloat(input.value) || 0);
+    if (key === 'esmalte_base') {
+      newP.esmalte_base = val;
+      if (val !== DEFAULT_PRECIOS.esmalte_base) changed++;
+    } else if (newP[key]) {
+      for (var i=0; i<newP[key].length; i++) {
+        if (newP[key][i].id === id) {
+          if (newP[key][i].price !== val) changed++;
+          newP[key][i].price = val;
+          break;
+        }
+      }
     }
   });
-  savePrecios(p);
+  savePrecios(newP);
   applyPrecios();
-  const st = document.getElementById('saveStatus');
-  if(st){ st.style.display='inline'; setTimeout(function(){ st.style.display='none'; }, 3000); }
-  showNotif('Precios guardados y aplicados al cotizador');
-  setTimeout(function(){ showTab('precios'); }, 250);
+  var st = document.getElementById('saveStatus');
+  if (st) { st.style.display='inline'; setTimeout(function(){ st.style.display='none'; }, 4000); }
+  showNotif('&#10003; ' + changed + ' precio' + (changed!==1?'s':'') + ' guardado' + (changed!==1?'s':''));
+  setTimeout(function(){ showTab('precios'); }, 300);
 }
 
-// Apply prices on load
+// ============================================================
+// MODAL & NOTIFICATIONS
+// ============================================================
+function openModal(html) {
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+
+function showNotif(msg) {
+  var n = document.createElement('div');
+  n.innerHTML = msg;
+  n.style.cssText = 'position:fixed;bottom:24px;right:24px;background:rgba(13,6,32,0.97);border:1px solid rgba(196,96,126,0.4);color:#e8d8f0;padding:12px 24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:9999;font-size:0.85rem;font-family:Orbitron,monospace;letter-spacing:0.5px';
+  document.body.appendChild(n);
+  setTimeout(function(){ n.remove(); }, 3500);
+}
+
+// ============================================================
+// RESPONSIVE GRID
+// ============================================================
+window.addEventListener('resize', function() {
+  var g = document.getElementById('calcGrid');
+  if (g) g.style.gridTemplateColumns = window.innerWidth < 900 ? '1fr' : '1fr 340px';
+});
+
+// ============================================================
+// INIT — apply custom prices on load
+// ============================================================
 applyPrecios();
-
-
-
 
 </script>
 </body>
