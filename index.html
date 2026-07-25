@@ -793,7 +793,6 @@ var DEFAULT_PRECIOS = {
     {id:'ballerina', name:'Ballerina / Coffin',  price:50},
     {id:'stiletto',  name:'Estilete / Stiletto', price:50},
   ],
-  esmalte_base: 350,
   esmaltes: [
     {id:'liso',   name:'Gel Polish Liso',        desc:'1 o 2 tonos', price:0},
     {id:'mate',   name:'Efecto Mate',            desc:'',            price:50},
@@ -843,7 +842,6 @@ var DECORACIONES = [];
 var DECO_PIEZAS  = [];
 var ADICIONALES  = [];
 var MATERIALES   = [];
-var ESMALTE_BASE_VAL = 350;
 
 // ============================================================
 // STORAGE HELPERS
@@ -864,7 +862,6 @@ function loadPrecios() {
     var base  = JSON.parse(JSON.stringify(DEFAULT_PRECIOS));
     if (!saved) return base;
     var custom = JSON.parse(saved);
-    if (typeof custom.esmalte_base === 'number') base.esmalte_base = custom.esmalte_base;
     ['estructuras','longitudes','formas','esmaltes','decoraciones','deco_piezas','adicionales','materiales'].forEach(function(key) {
       if (custom[key] && Array.isArray(custom[key])) {
         base[key].forEach(function(item) {
@@ -888,7 +885,6 @@ function applyPrecios() {
   DECO_PIEZAS_fill(p.deco_piezas);
   ADICIONALES_fill(p.adicionales);
   MATERIALES_fill(p.materiales);
-  ESMALTE_BASE_VAL = p.esmalte_base || 350;
 }
 function ESTRUCTURAS_fill(arr)  { ESTRUCTURAS.length=0;  arr.forEach(function(x){ESTRUCTURAS.push(x);}); }
 function LONGITUDES_fill(arr)   { LONGITUDES.length=0;   arr.forEach(function(x){LONGITUDES.push(x);}); }
@@ -1026,10 +1022,8 @@ function calcTotal() {
   }
 
   if (!na.esmalte) {
-    total += ESMALTE_BASE_VAL;
-    breakdown.push({label:'Gel Polish base', amount:ESMALTE_BASE_VAL});
     var esm = ESMALTES.filter(function(e){return e.id===calc.esmalte;})[0];
-    if (esm && esm.price > 0) { total += esm.price; breakdown.push({label:'Acabado: '+esm.name, amount:esm.price}); }
+    if (esm) { total += esm.price; breakdown.push({label:'Acabado: '+esm.name, amount:esm.price}); }
   } else {
     breakdown.push({label:'Esmalte: N/A', amount:0});
   }
@@ -1115,7 +1109,6 @@ function buildCalculadora() {
   var total = ct.total;
   var breakdown = ct.breakdown;
   var tiempo = calcTime();
-  var EBV = ESMALTE_BASE_VAL;
   var warn200 = total === 200 ? '<div class="warning-msg">&#9888; Precio minimo aplicado: $200 MXN</div>' : '';
 
   function naCard(key) {
@@ -1174,7 +1167,7 @@ function buildCalculadora() {
       +'<div class="chk-box">&#10003;</div>'
       +'<div class="chk-body"><div class="chk-name">'+e.name+'</div>'
       +(e.desc?'<div class="chk-desc">'+e.desc+'</div>':'')
-      +'<div class="chk-price">'+(e.price===0?'Incluido (base '+fmt(EBV)+')':'+'+fmt(e.price))+'</div>'
+      +'<div class="chk-price">'+(e.price===0?'Incluido':'+'+fmt(e.price))+'</div>'
       +'</div></div>';
   });
 
@@ -1272,7 +1265,7 @@ function buildCalculadora() {
     +'<div class="chk-grid" style="margin-top:8px">'+frmRows+'</div></div>'
 
     +'<div class="card"><div class="card-title"><span class="icon">&#10024;</span>ESMALTE Y ACABADO</div>'
-    +'<div class="deselect-hint">&#9432; Base Gel Polish: '+fmt(EBV)+' siempre incluida. Toca efecto para agregar/quitar.</div>'
+    +'<div class="deselect-hint">&#9432; Gel Polish Liso es la opcion base. Toca efecto para agregar/quitar.</div>'
     +'<div class="chk-grid" style="margin-top:10px">'+esmRows+'</div></div>'
 
     +'<div class="card"><div class="card-title"><span class="icon">&#127912;</span>DECORACION</div>'
@@ -1645,20 +1638,7 @@ function buildPrecios() {
       +'<div class="precios-grid">'+(extra||'')+rowsHTML+'</div></div>';
   }
 
-  var ebChanged = p.esmalte_base !== def.esmalte_base;
-  var esmalteBaseRow = '<div class="precio-row'+(ebChanged?' modified':'')+'">'
-    +'<div class="precio-label">Gel Polish Liso &mdash; precio base siempre incluido'
-    +'<div class="precio-sublabel">Base del servicio de esmalte</div></div>'
-    +'<div class="precio-input-wrap"><span class="precio-symbol">$</span>'
-    +'<input class="precio-input'+(ebChanged?' changed':'')+'"'
-      +' type="number" min="0" step="1" value="'+p.esmalte_base+'"'
-      +' data-key="esmalte_base" data-id="base" data-default="'+def.esmalte_base+'"'
-      +' onchange="onPrecioChange(this)" oninput="onPrecioChange(this)">'
-    +'<button class="btn-restore-one" onclick="restoreOne(this,'+def.esmalte_base+')">&#8635;</button>'
-    +'</div></div>';
-
   var modCount = 0;
-  if (p.esmalte_base !== def.esmalte_base) modCount++;
   ['estructuras','longitudes','formas','esmaltes','decoraciones','deco_piezas','adicionales','materiales'].forEach(function(k) {
     p[k].forEach(function(item,i){ if(item.price !== def[k][i].price) modCount++; });
   });
@@ -1672,7 +1652,7 @@ function buildPrecios() {
     +sectionHTML('TECNICA / SERVICIO','&#128302;',p.estructuras,def.estructuras,'estructuras')
     +sectionHTML('TAMANO #1 AL #10 (INCREMENTO)','&#128207;',p.longitudes,def.longitudes,'longitudes')
     +sectionHTML('FORMA (INCREMENTO)','&#128142;',p.formas,def.formas,'formas')
-    +sectionHTML('ESMALTE Y ACABADO','&#10024;',p.esmaltes,def.esmaltes,'esmaltes',esmalteBaseRow)
+    +sectionHTML('ESMALTE Y ACABADO','&#10024;',p.esmaltes,def.esmaltes,'esmaltes')
     +sectionHTML('DECORACION POR MANO COMPLETA','&#127912;',p.decoraciones,def.decoraciones,'decoraciones')
     +sectionHTML('EXTRAS (POR UNA)','&#128396;',p.deco_piezas,def.deco_piezas,'deco_piezas')
     +sectionHTML('RETIRO','&#11088;',p.adicionales,def.adicionales,'adicionales')
@@ -1717,10 +1697,7 @@ function savePreciosUI() {
     var key = input.getAttribute('data-key');
     var id  = input.getAttribute('data-id');
     var val = Math.max(0, parseFloat(input.value) || 0);
-    if (key === 'esmalte_base') {
-      newP.esmalte_base = val;
-      if (val !== DEFAULT_PRECIOS.esmalte_base) changed++;
-    } else if (newP[key]) {
+    if (newP[key]) {
       for (var i=0; i<newP[key].length; i++) {
         if (newP[key][i].id === id) {
           if (newP[key][i].price !== val) changed++;
