@@ -768,16 +768,23 @@ var DEFAULT_USERS = [
 
 var DEFAULT_PRECIOS = {
   estructuras: [
-    {id:'tips',    name:'Acrilico con Tips / Construccion', price:450},
-    {id:'natural', name:'Acrilico sobre una natural',       price:400},
-    {id:'polygel', name:'Polygel / Hibrido',                price:500},
-    {id:'softgel', name:'Soft Gel / Tip Full Cover',        price:480},
+    {id:'acrilicos', name:'Acrilicos', desc:'Precio base tamano #1',                 price:200},
+    {id:'poligel',   name:'Poligel',   desc:'Precio base tamano #1',                 price:200},
+    {id:'softgel',   name:'Soft Gel',  desc:'Precio base tamano #1 (incluye 2 tonos de gel semi)', price:200},
+    {id:'rubber',    name:'Base Rubber', desc:'1 tono o 2 (incrementa segun diseno)', price:200},
+    {id:'gelsemi',   name:'Gel Semi',    desc:'1 tono o 2 (incrementa segun diseno)', price:150},
   ],
   longitudes: [
-    {id:'corto', name:'Largo Corto',      desc:'Sin recargo (base)', price:0},
-    {id:'medio', name:'Largo Medio',      desc:'+$70',               price:70},
-    {id:'largo', name:'Largo Largo',      desc:'+$70',               price:70},
-    {id:'xl',    name:'XL / Extra Largo', desc:'+$100',              price:100},
+    {id:'t1',  name:'Tamano #1',  desc:'Base (incluido)',                            price:0},
+    {id:'t2',  name:'Tamano #2',  desc:'+$50',                                       price:50},
+    {id:'t3',  name:'Tamano #3',  desc:'+$80',                                       price:80},
+    {id:'t4',  name:'Tamano #4',  desc:'+$100',                                      price:100},
+    {id:'t5',  name:'Tamano #5',  desc:'+$150',                                      price:150},
+    {id:'t6',  name:'Tamano #6',  desc:'+$200 (no aplica en Soft Gel)',              price:200},
+    {id:'t7',  name:'Tamano #7',  desc:'+$300 (no aplica en Soft Gel)',              price:300},
+    {id:'t8',  name:'Tamano #8',  desc:'+$350 (no aplica en Soft Gel)',              price:350},
+    {id:'t9',  name:'Tamano #9',  desc:'+$400 (no aplica en Soft Gel)',              price:400},
+    {id:'t10', name:'Tamano #10', desc:'+$500 (no aplica en Soft Gel)',              price:500},
   ],
   formas: [
     {id:'cuadrada',  name:'Cuadrada',            price:0},
@@ -808,18 +815,15 @@ var DEFAULT_PRECIOS = {
     {id:'ninguna',     name:'Sin decoracion',          desc:'',                                price:0},
   ],
   deco_piezas: [
-    {id:'pieza_sencillo', name:'Sencillo (puntos, stickers)', price:15},
-    {id:'pieza_avanzado', name:'Avanzado (mano alzada)',       price:80},
-    {id:'pieza_3d',       name:'3D / Escultura',               price:120},
-    {id:'pieza_cristal',  name:'Cristal / Piedra pequena',    price:15},
-    {id:'pieza_charm',    name:'Charm / Cadena',               price:30},
+    {id:'extra_decodijes', name:'Decoraciones y dijes',                    price:15},
+    {id:'extra_pedreria',  name:'Pedreria',      desc:'$1 - $2 - $5 segun tamano', price:2},
+    {id:'extra_manoalzada',name:'Mano alzada',                             price:15},
+    {id:'extra_ojogato',   name:'Ojo de gato / Espejo / Cromado / Glass',  price:20},
   ],
   adicionales: [
-    {id:'relleno',   name:'Retoque / Relleno (Fill-In)', desc:'Hasta 3 semanas', price:400},
-    {id:'remocion',  name:'Remocion completa',           desc:'Producto anterior',price:180},
-    {id:'reparacion',name:'Reparacion de 1 una rota',   desc:'',                 price:80},
-    {id:'refuerzo',  name:'Refuerzo unas debiles',       desc:'',                 price:100},
-    {id:'masaje',    name:'Masaje + aceite de cuticula', desc:'Extra',            price:50},
+    {id:'retiro_propio', name:'Retiro Acrilico y Soft Gel',  desc:'Trabajo propio',    price:100},
+    {id:'retiro_otro',   name:'Retiro Acrilico y Soft Gel',  desc:'De otro lugar',     price:180},
+    {id:'retiro_semi',   name:'Retiro Gel Semi y Base Rubber', desc:'',                price:50},
   ],
   materiales: [
     {id:'mat_cristal', name:'Cristal / Piedra (cargo)', price:15},
@@ -901,9 +905,9 @@ function MATERIALES_fill(arr)   { MATERIALES.length=0;   arr.forEach(function(x)
 var currentUser = null;
 function freshCalc() {
   return {
-    estructura:'tips', longitud:'corto', forma:'cuadrada', esmalte:'liso',
-    decoracion:'ninguna', decoPorMano:true, decoPieza:'pieza_sencillo', decoPiezaCant:1,
-    adicionales:{relleno:false,remocion:false,reparacion:false,refuerzo:false,masaje:false},
+    estructura:'acrilicos', longitud:'t1', forma:'cuadrada', esmalte:'liso',
+    decoracion:'ninguna', decoPorMano:true, decoPieza:'extra_decodijes', decoPiezaCant:1,
+    adicionales:{retiro_propio:false,retiro_otro:false,retiro_semi:false},
     materiales:{mat_cristal:0,mat_charm:0,mat_perla:0},
     na:{estructura:false,longitud:false,forma:false,esmalte:false,decoracion:false}
   };
@@ -1066,14 +1070,14 @@ function calcTotal() {
 
 function calcTime() {
   var min = 70;
-  if (calc.longitud === 'largo') min += 15;
-  if (calc.longitud === 'xl')    min += 25;
-  if (calc.estructura === 'polygel' || calc.estructura === 'softgel') min += 15;
+  if (calc.longitud === 't7' || calc.longitud === 't8' || calc.longitud === 't9' || calc.longitud === 't10') min += 15;
+  if (calc.longitud === 't9' || calc.longitud === 't10')    min += 25;
+  if (calc.estructura === 'poligel' || calc.estructura === 'softgel') min += 15;
   var decoItem = DECORACIONES.filter(function(d){return d.id===calc.decoracion;})[0];
   if (decoItem && decoItem.price >= 200) min += 30;
   else if (decoItem && decoItem.price >= 100) min += 20;
-  if (calc.adicionales.masaje)   min += 15;
-  if (calc.adicionales.remocion) min += 20;
+  if (calc.adicionales.retiro_otro)  min += 15;
+  if (calc.adicionales.retiro_propio) min += 10;
   var h = Math.floor(min/60), m = min%60;
   return (h>0 ? h+'h ' : '') + m + 'min';
 }
@@ -1255,11 +1259,11 @@ function buildCalculadora() {
 
   return '<div id="calcGrid" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">'
     +'<div>'
-    +'<div class="card"><div class="card-title"><span class="icon">&#128302;</span>TIPO DE ESTRUCTURA</div>'
+    +'<div class="card"><div class="card-title"><span class="icon">&#128302;</span>TECNICA / SERVICIO</div>'
     +'<div class="na-hint">Selecciona N/A si no aplica esta seccion</div>'
     +'<div class="chk-grid" style="margin-top:8px">'+estRows+'</div></div>'
 
-    +'<div class="card"><div class="card-title"><span class="icon">&#128207;</span>LONGITUD</div>'
+    +'<div class="card"><div class="card-title"><span class="icon">&#128207;</span>TAMANO (#1 AL #10)</div>'
     +'<div class="na-hint">Selecciona N/A si no aplica</div>'
     +'<div class="chk-grid" style="margin-top:8px">'+lonRows+'</div></div>'
 
@@ -1276,7 +1280,7 @@ function buildCalculadora() {
     +'<div class="chk-grid-wide" style="margin-top:10px">'+decoRows+'</div>'
     +decoExtra+'</div>'
 
-    +'<div class="card"><div class="card-title"><span class="icon">&#11088;</span>ADICIONALES Y MANTENIMIENTO</div>'
+    +'<div class="card"><div class="card-title"><span class="icon">&#11088;</span>RETIRO</div>'
     +'<div class="deselect-hint">&#9432; Toca para agregar o quitar</div>'
     +'<div class="chk-grid-2" style="margin-top:10px">'+adRows+'</div></div>'
 
@@ -1665,13 +1669,13 @@ function buildPrecios() {
       +(modCount>0?'<span class="precios-badge">&#9889; '+modCount+' precio'+(modCount>1?'s':'')+' modificado'+(modCount>1?'s':'')+'</span>':'')
     +'</div>'
     +'<p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:20px">Edita el precio y presiona GUARDAR CAMBIOS. El boton &#8635; restaura ese campo al valor original.</p>'
-    +sectionHTML('TIPO DE ESTRUCTURA','&#128302;',p.estructuras,def.estructuras,'estructuras')
-    +sectionHTML('LONGITUD (INCREMENTO)','&#128207;',p.longitudes,def.longitudes,'longitudes')
+    +sectionHTML('TECNICA / SERVICIO','&#128302;',p.estructuras,def.estructuras,'estructuras')
+    +sectionHTML('TAMANO #1 AL #10 (INCREMENTO)','&#128207;',p.longitudes,def.longitudes,'longitudes')
     +sectionHTML('FORMA (INCREMENTO)','&#128142;',p.formas,def.formas,'formas')
     +sectionHTML('ESMALTE Y ACABADO','&#10024;',p.esmaltes,def.esmaltes,'esmaltes',esmalteBaseRow)
     +sectionHTML('DECORACION POR MANO COMPLETA','&#127912;',p.decoraciones,def.decoraciones,'decoraciones')
-    +sectionHTML('DECORACION POR UNA INDIVIDUAL','&#128396;',p.deco_piezas,def.deco_piezas,'deco_piezas')
-    +sectionHTML('ADICIONALES Y MANTENIMIENTO','&#11088;',p.adicionales,def.adicionales,'adicionales')
+    +sectionHTML('EXTRAS (POR UNA)','&#128396;',p.deco_piezas,def.deco_piezas,'deco_piezas')
+    +sectionHTML('RETIRO','&#11088;',p.adicionales,def.adicionales,'adicionales')
     +sectionHTML('CARGO DE MATERIAL EXTRA','&#128141;',p.materiales,def.materiales,'materiales')
     +'<div class="precios-actions">'
       +'<button class="btn-save-precios" onclick="savePreciosUI()">&#128190; GUARDAR CAMBIOS</button>'
