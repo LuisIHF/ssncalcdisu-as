@@ -690,6 +690,7 @@ body.light .chk-box{background:rgba(255,255,255,0.9)}
 
 
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -756,6 +757,15 @@ var USERS_KEY   = 'ssn_users2';
 var SALES_KEY   = 'ssn_sales2';
 var HISTORY_KEY = 'ssn_history2';
 var PRECIOS_KEY = 'ssn_precios_v1';
+
+// ============================================================
+// SUPABASE (usuarios en la nube — se replican entre dispositivos)
+// ============================================================
+var SUPABASE_URL      = 'https://fmlobduzfrmpqeovslhf.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtbG9iZHV6ZnJtcHFlb3ZzbGhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwMzYxMDQsImV4cCI6MjEwMDYxMjEwNH0.hPjfdzoNyvZgz8-rhKwBD3MrNbrtYrYScKxerVO77dU';
+var supabaseClient = (window.supabase && window.supabase.createClient)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 // ============================================================
 // DEFAULT DATA
@@ -846,11 +856,39 @@ var MATERIALES   = [];
 // ============================================================
 // STORAGE HELPERS
 // ============================================================
-function loadUsers() {
-  try { var s = localStorage.getItem(USERS_KEY); return s ? JSON.parse(s) : DEFAULT_USERS.map(function(u){return Object.assign({},u);}); }
-  catch(e) { return DEFAULT_USERS.map(function(u){return Object.assign({},u);}); }
+// usersCache mantiene la última lista conocida en memoria para uso sincrono
+// en la UI (render de tarjetas, formularios de edicion, etc).
+var usersCache = DEFAULT_USERS.map(function(u){return Object.assign({},u);});
+
+function loadUsersLocalCache() {
+  try { var s = localStorage.getItem(USERS_KEY); return s ? JSON.parse(s) : usersCache; }
+  catch(e) { return usersCache; }
 }
-function saveUsers(u)   { localStorage.setItem(USERS_KEY,   JSON.stringify(u)); }
+function saveUsersLocalCache(u) { localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
+
+// Trae la lista de usuarios desde Supabase (se replica entre dispositivos).
+// Si no hay conexion, usa la ultima copia guardada localmente como respaldo.
+async function syncUsersFromSupabase() {
+  if (!supabaseClient) { usersCache = loadUsersLocalCache(); return usersCache; }
+  try {
+    var res = await supabaseClient.from('usuarios').select('*').order('id', {ascending:true});
+    if (res.error) throw res.error;
+    if (res.data && res.data.length) {
+      usersCache = res.data;
+      saveUsersLocalCache(usersCache);
+    } else {
+      usersCache = loadUsersLocalCache();
+    }
+  } catch (e) {
+    console.warn('No se pudo conectar con Supabase, usando datos locales.', e);
+    usersCache = loadUsersLocalCache();
+  }
+  return usersCache;
+}
+
+// Compatibilidad: código existente que llamaba loadUsers() de forma síncrona
+// ahora lee de la caché en memoria (ya sincronizada al cargar la página).
+function loadUsers() { return usersCache; }
 function loadSales()    { try { var s=localStorage.getItem(SALES_KEY);   return s?JSON.parse(s):[]; } catch(e){return [];} }
 function saveSales(s)   { localStorage.setItem(SALES_KEY,   JSON.stringify(s)); }
 function loadHistory()  { try { var s=localStorage.getItem(HISTORY_KEY); return s?JSON.parse(s):[]; } catch(e){return [];} }
@@ -930,10 +968,14 @@ function selectRole(r) {
   }
 }
 
-function doLogin() {
+async function doLogin() {
   var u = document.getElementById('loginUser').value.trim();
   var p = document.getElementById('loginPass').value.trim();
-  var users = loadUsers();
+  var btn = document.querySelector('#loginScreen .btn-primary');
+  var originalBtnText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
+  var users = await syncUsersFromSupabase();
+  if (btn) { btn.disabled = false; btn.textContent = originalBtnText; }
   var found = null;
   for (var i = 0; i < users.length; i++) {
     if (users[i].username === u && users[i].pass === p) { found = users[i]; break; }
@@ -1556,15 +1598,20 @@ function addUser() {
     +'<div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-save" onclick="saveNewUser()">GUARDAR</button></div>');
 }
 
-function saveNewUser() {
+async function saveNewUser() {
   var name = document.getElementById('uName').value.trim();
   var uname= document.getElementById('uUser').value.trim();
   var pass = document.getElementById('uPass').value.trim();
   var role = document.getElementById('uRole').value;
   if (!name||!uname||!pass) { alert('Completa todos los campos'); return; }
-  var users = loadUsers();
-  users.push({id:Date.now(), name:name, username:uname, pass:pass, role:role});
-  saveUsers(users);
+  if (usersCache.some(function(u){ return u.username === uname; })) {
+    alert('Ese nombre de usuario ya existe. Elige otro.');
+    return;
+  }
+  if (!supabaseClient) { alert('Sin conexión con la base de datos. Intenta más tarde.'); return; }
+  var res = await supabaseClient.from('usuarios').insert({name:name, username:uname, pass:pass, role:role});
+  if (res.error) { alert('Error al guardar el usuario: ' + res.error.message); return; }
+  await syncUsersFromSupabase();
   closeModal();
   showTab('usuarios');
 }
@@ -1586,25 +1633,26 @@ function editUser(id) {
     +'<div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-save" onclick="updateUser('+id+')">GUARDAR</button></div>');
 }
 
-function updateUser(id) {
-  var users = loadUsers();
-  for (var i=0; i<users.length; i++) {
-    if (users[i].id === id) {
-      users[i].name     = document.getElementById('eeName').value.trim();
-      users[i].username = document.getElementById('eeUser').value.trim();
-      users[i].pass     = document.getElementById('eePass').value.trim();
-      users[i].role     = document.getElementById('eeRole').value;
-      break;
-    }
-  }
-  saveUsers(users);
+async function updateUser(id) {
+  var name  = document.getElementById('eeName').value.trim();
+  var uname = document.getElementById('eeUser').value.trim();
+  var pass  = document.getElementById('eePass').value.trim();
+  var role  = document.getElementById('eeRole').value;
+  if (!name||!uname||!pass) { alert('Completa todos los campos'); return; }
+  if (!supabaseClient) { alert('Sin conexión con la base de datos. Intenta más tarde.'); return; }
+  var res = await supabaseClient.from('usuarios').update({name:name, username:uname, pass:pass, role:role}).eq('id', id);
+  if (res.error) { alert('Error al actualizar el usuario: ' + res.error.message); return; }
+  await syncUsersFromSupabase();
   closeModal();
   showTab('usuarios');
 }
 
-function deleteUser(id) {
+async function deleteUser(id) {
   if (!confirm('Eliminar usuario?')) return;
-  saveUsers(loadUsers().filter(function(u){ return u.id !== id; }));
+  if (!supabaseClient) { alert('Sin conexión con la base de datos. Intenta más tarde.'); return; }
+  var res = await supabaseClient.from('usuarios').delete().eq('id', id);
+  if (res.error) { alert('Error al eliminar el usuario: ' + res.error.message); return; }
+  await syncUsersFromSupabase();
   showTab('usuarios');
 }
 
@@ -1745,6 +1793,10 @@ window.addEventListener('resize', function() {
 // INIT — apply custom prices on load
 // ============================================================
 applyPrecios();
+
+// Precarga los usuarios desde Supabase para que el primer login sea
+// inmediato (doLogin también sincroniza por su cuenta, esto es solo caché tibia).
+syncUsersFromSupabase();
 
 </script>
 </body>
